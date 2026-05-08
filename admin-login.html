@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login | Harla Hotel</title>
+    <meta
+      name="description"
+      content="Sign in to the protected Harla Hotel admin dashboard with Supabase email and password authentication."
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <!-- REPLACE: For the current static site, paste your Supabase URL and anon key here. For Vite, use .env instead. -->
+    <script>
+      window.HARLA_SUPABASE_CONFIG = { url: "", anonKey: "" };
+    </script>
+    <script type="module" src="./src/admin-login.js?v=20260507-auth"></script>
+  </head>
+  <body class="admin-page">
+    <a class="skip-link" href="#admin-login-main">Skip to admin login</a>
+    <div id="admin-login-app"></div>
+  </body>
+</html>

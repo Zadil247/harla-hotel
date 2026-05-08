@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Your Stay at Harla Hotel</title>
+    <meta
+      name="description"
+      content="Book your stay at Harla Hotel by selecting a room type, dates, guest count, and number of rooms. Choose Double Bed, Queen/Normal, or Cultural King Room."
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <!-- REPLACE: For the current static site, paste your Supabase URL and anon key here. For Vite, use .env instead. -->
+    <script>
+      window.HARLA_SUPABASE_CONFIG = { url: "", anonKey: "" };
+    </script>
+    <script type="module" src="./src/room-booking.js?v=20260507-supabase"></script>
+  </head>
+  <body class="room-booking-page">
+    <a class="skip-link" href="#room-booking-main">Skip to room booking</a>
+    <div id="room-booking-app"></div>
+  </body>
+</html>

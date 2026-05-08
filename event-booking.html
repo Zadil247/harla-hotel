@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Event Hall | Harla Hotel</title>
+    <meta
+      name="description"
+      content="Book Harla Hotel event hall for weddings, conferences, birthdays, and corporate events with date, time, guest count, and catering options."
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <!-- REPLACE: For the current static site, paste your Supabase URL and anon key here. For Vite, use .env instead. -->
+    <script>
+      window.HARLA_SUPABASE_CONFIG = { url: "", anonKey: "" };
+    </script>
+    <script type="module" src="./src/event-booking.js?v=20260507-supabase"></script>
+  </head>
+  <body class="event-page">
+    <a class="skip-link" href="#event-main">Skip to event booking form</a>
+    <div id="event-booking-app"></div>
+  </body>
+</html>
