@@ -1,28 +1,30 @@
 import {
   harariCulturalHouse,
-  hospitalityHighlights,
   images,
-  menuPreview,
   packages,
-  restaurantPage,
   roomHighlights,
   rooms,
   services,
   siteConfig,
-  vipRoomGallery,
   whatsappLinks,
-} from "./data.js?v=20260507-supabase";
+} from "./data.js?v=20260519-client-feedback";
+import { LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260519-client-feedback";
 
 const navLinks = [
   ["About", "./index.html#about", "about"],
   ["Rooms", "./index.html#rooms", "rooms"],
-  ["Restaurant", "./restaurant.html", "restaurant"],
+  ["Restaurant Menu", "./restaurant-order.html", "restaurant"],
   ["Event Hall", "./event-hall.html", "events"],
   ["Packages", "./index.html#packages", "packages"],
   ["Gallery", "./index.html#gallery", "gallery"],
   ["Location", "./index.html#location", "location"],
   ["Contact", "./index.html#contact", "contact"],
 ];
+
+function packageWhatsAppUrl(packageName) {
+  const message = `Hello Harla Hotel, I want to request the ${packageName}. Please send details.`;
+  return `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+}
 
 export function Navbar(active = "home") {
   return `
@@ -63,9 +65,8 @@ export function Hero() {
         <p>From comfortable rooms to cultural adventures, Harla Hotel makes your visit complete.</p>
         <div class="hero-actions" aria-label="Primary actions">
           <a class="btn btn-primary" href="./book-room.html">Book a Room</a>
-          <a class="btn btn-light" href="./restaurant.html">Reserve Table</a>
+          <a class="btn btn-light" href="#restaurant-order-options">Restaurant Menu</a>
           <a class="btn btn-outline" href="./event-hall.html">Plan Event</a>
-          <a class="btn btn-whatsapp" href="${whatsappLinks.room}">WhatsApp Room</a>
         </div>
       </div>
     </section>
@@ -105,8 +106,7 @@ export function ServiceCard(service) {
 }
 
 export function PackageCard(packageDeal) {
-  const serviceType =
-    packageDeal.name === "Custom Tour Guide Package" ? "Custom package request" : "Hotel + tour package";
+  const packageUrl = packageWhatsAppUrl(packageDeal.name);
 
   return `
     <article class="package-card reveal">
@@ -123,9 +123,9 @@ export function PackageCard(packageDeal) {
       </div>
       <div class="package-meta">
         <span>${packageDeal.duration}</span>
-        <a class="text-link" href="#booking" data-service-shortcut="${serviceType}" data-package-shortcut="${packageDeal.name}">Request Package</a>
+        <a class="text-link" href="${packageUrl}" target="_blank" rel="noopener">Request Package</a>
       </div>
-      <a class="mini-whatsapp" href="${whatsappLinks.package}">WhatsApp Package</a>
+      <a class="mini-whatsapp" href="${packageUrl}" target="_blank" rel="noopener">WhatsApp Package</a>
     </article>
   `;
 }
@@ -142,7 +142,7 @@ export function PackagesSection() {
             sightseeing, cultural food, coffee, transfers, and guided experiences.
           </p>
         </div>
-        <img src="${images.packages}" alt="Travel experience preview for guests visiting Harar" loading="lazy" />
+        ${LightboxImage(images.packages, "Travel experience preview for guests visiting Harar", "packages-preview-image")}
       </div>
       <div class="package-grid">
         ${packages.map(PackageCard).join("")}
@@ -192,32 +192,12 @@ export function HarariCulturalHouseSection() {
           .map(
             (image, index) => `
               <figure>
-                <img src="${image}" alt="${harariCulturalHouse.title} photo ${index + 1}" loading="lazy" />
+                ${LightboxImage(image, `${harariCulturalHouse.title} photo ${index + 1}`)}
               </figure>
             `,
           )
           .join("")}
       </div>
-    </section>
-  `;
-}
-
-export function RestaurantPreview() {
-  return `
-    <section class="section preview-band restaurant-preview" aria-labelledby="restaurant-preview-title">
-      <div class="preview-copy reveal">
-        <p class="eyebrow">Restaurant</p>
-        <h2 id="restaurant-preview-title">Private dining, warm service, and Harari flavor</h2>
-        <p>
-          Reserve a table or a VIP private room with traditional mejlis seating for family meals, business meals,
-          and special occasions.
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="./restaurant.html">Open Restaurant Page</a>
-          <a class="btn btn-light" href="${whatsappLinks.table}">WhatsApp Table</a>
-        </div>
-      </div>
-      <img class="preview-image reveal" src="${images.restaurant}" alt="${restaurantPage.vipTitle}" loading="lazy" />
     </section>
   `;
 }
@@ -237,7 +217,7 @@ export function EventPreview() {
           <a class="btn btn-whatsapp" href="${whatsappLinks.event}">WhatsApp Event</a>
         </div>
       </div>
-      <img class="preview-image reveal" src="${images.event}" alt="Harla Hotel event hall preview" loading="lazy" />
+      ${LightboxImage(images.event, "Harla Hotel event hall preview", "preview-image reveal")}
     </section>
   `;
 }
@@ -250,12 +230,9 @@ export function Gallery() {
     "Room Desk",
     "Hotel Hallway",
     "VIP Private Room",
-    "Luxury VIP Mejlis Seating",
-    "Private VIP Gathering Room",
     "Harari Cultural House",
     "Cultural House Gate",
     "Cultural Photo & Lunch Room",
-    "Restaurant VIP Lounge",
     "Event Hall",
     "Packages Reception",
   ];
@@ -272,7 +249,7 @@ export function Gallery() {
           .map(
             (image, index) => `
               <figure class="gallery-item reveal">
-                <img src="${image}" alt="${labels[index]} preview at Harla Hotel" loading="lazy" />
+                ${LightboxImage(image, `${labels[index]} preview at Harla Hotel`, "gallery-lightbox-button")}
                 <figcaption>${labels[index]}</figcaption>
               </figure>
             `,
@@ -283,25 +260,51 @@ export function Gallery() {
   `;
 }
 
-export function VipRoomGallerySection() {
+const restaurantOrderOptions = [
+  {
+    title: "Dine In",
+    description: "Enjoy your meal at Harla Hotel in a warm and comfortable restaurant setting.",
+    button: "Start Dine In Order",
+    href: "./restaurant-order.html?order=dine_in",
+    image: images.restaurant,
+  },
+  {
+    title: "Take Away",
+    description: "Order your favorite meals ahead and collect them from the restaurant.",
+    button: "Start Take Away Order",
+    href: "./restaurant-order.html?order=takeaway",
+    image: images.eventRefreshments,
+  },
+  {
+    title: "Delivery",
+    description: "Get your food delivered to your selected area quickly and conveniently.",
+    button: "Start Delivery Order",
+    href: "./restaurant-order.html?order=delivery",
+    image: images.eventDessertBuffet,
+  },
+];
+
+export function RestaurantOrderOptionsSection() {
   return `
-    <section class="section vip-room-gallery" aria-labelledby="vip-room-gallery-title">
+    <section class="section restaurant-order-options" id="restaurant-order-options" aria-labelledby="restaurant-order-options-title">
       <div class="section-heading reveal">
-        <p class="eyebrow">Hotel VIP Rooms</p>
-        <h2 id="vip-room-gallery-title">Luxurious private rooms for lunch and coffee ceremony</h2>
-        <p>
-          Guests can book these VIP hotel rooms to relax, enjoy a coffee ceremony, share lunch, and spend private
-          time in a warm Harari-inspired setting.
-        </p>
+        <p class="eyebrow">Restaurant Menu</p>
+        <h2 id="restaurant-order-options-title">Choose How You Want to Order</h2>
+        <p>Select your preferred ordering method and continue to our menu.</p>
       </div>
-      <div class="gallery-grid compact-gallery">
-        ${vipRoomGallery
+
+      <div class="order-option-grid">
+        ${restaurantOrderOptions
           .map(
-            (item) => `
-              <figure class="gallery-item reveal">
-                <img src="${item.image}" alt="${item.label}" loading="lazy" />
-                <figcaption>${item.label}</figcaption>
-              </figure>
+            (option) => `
+              <article class="order-option-card reveal">
+                ${LightboxImage(option.image, `${option.title} restaurant order option`, "order-option-image")}
+                <div class="order-option-body">
+                  <h3>${option.title}</h3>
+                  <p>${option.description}</p>
+                  <a class="btn btn-primary" href="${option.href}">${option.button}</a>
+                </div>
+              </article>
             `,
           )
           .join("")}
@@ -414,7 +417,7 @@ export function App() {
       ${Hero()}
       <section class="section about" id="about" aria-labelledby="about-title">
         <div class="about-media reveal">
-          <img src="${images.about}" alt="Elegant Harla Hotel lounge and hospitality area" loading="lazy" />
+          ${LightboxImage(images.about, "Elegant Harla Hotel lounge and hospitality area")}
         </div>
         <div class="about-copy reveal">
           <p class="eyebrow">About Harla Hotel</p>
@@ -442,16 +445,15 @@ export function App() {
           <h2 id="rooms-title">Comfortable stays with a premium touch</h2>
           <p>Room prices are ready for your final rates. Each card can connect directly to your booking workflow later.</p>
         </div>
-        <div class="room-grid">
-          ${rooms.map(RoomCard).join("")}
-        </div>
         <div class="room-photo-strip reveal" aria-label="Actual Harla Hotel room and hallway photos">
           ${roomHighlights
             .map(
               (item) => `
                 <figure>
-                  <img src="${item.image}" alt="${item.label} at Harla Hotel" loading="lazy" />
-                  <figcaption>${item.label}</figcaption>
+                  <button class="room-photo-button" type="button" data-lightbox-src="${item.image}" data-lightbox-label="${item.label}">
+                    <img src="${item.image}" alt="${item.label} at Harla Hotel" loading="lazy" />
+                    <span class="room-photo-label">${item.label}</span>
+                  </button>
                 </figure>
               `,
             )
@@ -460,8 +462,7 @@ export function App() {
       </section>
 
       ${HarariCulturalHouseSection()}
-      ${VipRoomGallerySection()}
-      ${RestaurantPreview()}
+      ${RestaurantOrderOptionsSection()}
       ${EventPreview()}
 
       ${PackagesSection()}
@@ -502,6 +503,7 @@ export function App() {
         </div>
       </section>
     </main>
+    ${LightboxMarkup("Harla Hotel image viewer")}
     ${Footer()}
   `;
 }

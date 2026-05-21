@@ -1,5 +1,6 @@
-import { Footer, Navbar } from "./components.js?v=20260507-supabase";
-import { images, roomBookingTypes, siteConfig } from "./data.js?v=20260507-supabase";
+import { Footer, Navbar } from "./components.js?v=20260519-client-feedback";
+import { images, roomBookingTypes, siteConfig } from "./data.js?v=20260519-client-feedback";
+import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260519-client-feedback";
 import {
   backendSetupMessage,
   createRoomBooking,
@@ -23,7 +24,7 @@ function formatEtb(amount) {
 function roomCard(room) {
   return `
     <article class="room-type-card reveal" data-room-card="${room.slug}">
-      <img src="${room.image}" alt="${room.name}" loading="lazy" />
+      ${LightboxImage(room.image, room.name, "room-type-lightbox-image")}
       <div class="room-type-card-body">
         <p class="card-kicker">${room.priceLabel}</p>
         <h3>${room.name}</h3>
@@ -168,6 +169,7 @@ app.innerHTML = `
       </form>
     </section>
   </main>
+  ${LightboxMarkup("Harla Hotel room booking image viewer")}
   ${Footer()}
 `;
 
@@ -374,6 +376,7 @@ const revealObserver = new IntersectionObserver(
 );
 
 document.querySelectorAll(".reveal").forEach((element) => revealObserver.observe(element));
+initImageLightbox();
 
 checkIn.min = todayIso();
 checkOut.min = addDaysIso(todayIso(), 1);

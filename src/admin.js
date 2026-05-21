@@ -1,5 +1,5 @@
-import { Navbar } from "./components.js?v=20260507-supabase";
-import { images, siteConfig } from "./data.js?v=20260507-supabase";
+import { Navbar } from "./components.js?v=20260513-restaurant-order";
+import { images, siteConfig } from "./data.js?v=20260513-restaurant-order";
 import {
   backendSetupMessage,
   getAdminDashboardData,
@@ -7,7 +7,7 @@ import {
   requireAdminAccess,
   signOutAdmin,
   updateRequestStatus,
-} from "./supabase-api.js?v=20260507-supabase";
+} from "./supabase-api.js?v=20260513-restaurant-order";
 
 const app = document.querySelector("#admin-app");
 
@@ -55,6 +55,24 @@ const sections = [
     ],
   },
   {
+    key: "restaurantOrders",
+    table: "restaurant_orders",
+    title: "Restaurant Orders",
+    statusOptions: ["approved", "declined", "pending"],
+    columns: [
+      ["Customer", "customer_name"],
+      ["Phone", "phone"],
+      ["Order Type", "order_type"],
+      ["Address", "__address"],
+      ["Ordered Items", "items"],
+      ["Pastries", "pastry_items"],
+      ["Payment Method", "payment_method"],
+      ["Payment Reference", "payment_reference"],
+      ["Payment Screenshot", "payment_screenshot_url"],
+      ["Payment Status", "payment_status"],
+    ],
+  },
+  {
     key: "packageBookings",
     table: "package_bookings",
     title: "Package Bookings",
@@ -78,13 +96,59 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function formatValue(key, value) {
+function formatJsonList(value) {
+  const items = Array.isArray(value) ? value : [];
+
+  if (!items.length) {
+    return "-";
+  }
+
+  return `
+    <ul class="admin-line-list">
+      ${items
+        .map((item) => {
+          if ("kilograms" in item) {
+            return `<li>${escapeHtml(item.name)}: ${escapeHtml(item.kilograms)} kg, ${escapeHtml(item.level)}</li>`;
+          }
+          return `<li>${escapeHtml(item.quantity)} x ${escapeHtml(item.name)}</li>`;
+        })
+        .join("")}
+    </ul>
+  `;
+}
+
+function formatValue(key, value, row) {
+  if (key === "__address") {
+    return row.address_area === "Other"
+      ? `${escapeHtml(row.address_area)}: ${escapeHtml(row.custom_address || "")}`
+      : escapeHtml(row.address_area);
+  }
+
   if (value === null || value === undefined || value === "") {
     return "-";
   }
 
   if (key === "total_price") {
     return `${new Intl.NumberFormat("en-US").format(Number(value))} ETB`;
+  }
+
+  if (key === "items" || key === "pastry_items") {
+    return formatJsonList(value);
+  }
+
+  if (key === "payment_screenshot_url") {
+    const url = row.payment_screenshot_display_url;
+
+    if (!url) {
+      return escapeHtml(value);
+    }
+
+    return `
+      <a class="admin-screenshot-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">
+        <img src="${escapeHtml(url)}" alt="Payment screenshot" loading="lazy" />
+        <span>Open screenshot</span>
+      </a>
+    `;
   }
 
   return escapeHtml(value);
@@ -147,10 +211,10 @@ function statusPill(status) {
   return `<span class="status-pill status-${escapeHtml(status)}">${escapeHtml(status)}</span>`;
 }
 
-function actionButtons(table, id, currentStatus) {
+function actionButtons(table, id, currentStatus, options = ["approved", "rejected", "pending"]) {
   return `
     <div class="admin-actions">
-      ${["approved", "rejected", "pending"]
+      ${options
         .map(
           (status) => `
             <button
@@ -177,11 +241,11 @@ function renderTable(section, rows) {
           (row) => `
             <tr>
               ${section.columns
-                .map(([, key]) => `<td>${formatValue(key, row[key])}</td>`)
+                .map(([, key]) => `<td>${formatValue(key, row[key], row)}</td>`)
                 .join("")}
               <td>${statusPill(row.status)}</td>
               <td>${escapeHtml(row.message || "")}</td>
-              <td>${actionButtons(section.table, row.id, row.status)}</td>
+              <td>${actionButtons(section.table, row.id, row.status, section.statusOptions)}</td>
             </tr>
           `,
         )

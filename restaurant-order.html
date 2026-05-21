@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Dashboard | Harla Hotel</title>
+    <title>Restaurant Menu | Harla Hotel</title>
     <meta
       name="description"
-      content="Protected Harla Hotel admin dashboard for room bookings, event requests, restaurant requests, and package bookings."
+      content="Browse the Harla Hotel restaurant menu, choose dine in, take away, or delivery, and submit a restaurant order request."
     />
     <link rel="stylesheet" href="./src/styles.css" />
     <!-- REPLACE: For the current static site, paste your Supabase URL and anon key here. For Vite, use .env instead. -->
     <script>
       window.HARLA_SUPABASE_CONFIG = { url: "", anonKey: "" };
     </script>
-    <script type="module" src="./src/admin.js?v=20260513-restaurant-order"></script>
+    <script type="module" src="./src/restaurant-order.js?v=20260519-client-feedback"></script>
   </head>
-  <body class="admin-page">
-    <a class="skip-link" href="#admin-main">Skip to admin dashboard</a>
-    <div id="admin-app"></div>
+  <body class="restaurant-order-page">
+    <a class="skip-link" href="#restaurant-order-main">Skip to restaurant menu</a>
+    <div id="restaurant-order-app"></div>
   </body>
 </html>

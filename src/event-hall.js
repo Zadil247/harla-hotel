@@ -1,5 +1,6 @@
-import { Footer, Navbar, ServiceCard } from "./components.js?v=20260507-supabase";
-import { culturalPhotoRoom, eventGallery, images, services, siteConfig, whatsappLinks } from "./data.js?v=20260507-supabase";
+import { Footer, Navbar, ServiceCard } from "./components.js?v=20260519-client-feedback";
+import { culturalPhotoRoom, eventGallery, images, services, siteConfig, whatsappLinks } from "./data.js?v=20260519-client-feedback";
+import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260519-client-feedback";
 import {
   backendSetupMessage,
   createEventRequest,
@@ -42,7 +43,7 @@ app.innerHTML = `
           .map(
             (item) => `
               <figure>
-                <img src="${item.image}" alt="${item.label} at Harla Hotel" loading="lazy" />
+                ${LightboxImage(item.image, `${item.label} at Harla Hotel`)}
                 <figcaption>${item.label}</figcaption>
               </figure>
             `,
@@ -61,7 +62,7 @@ app.innerHTML = `
     <section class="section split-feature" aria-labelledby="cultural-photo-title">
       <div class="split-feature-media reveal">
         <!-- REPLACE: Replace with final Cultural Photo & Lunch Room images when available. -->
-        <img src="${images.culturalPhotoLunchRoom}" alt="${culturalPhotoRoom.title}" loading="lazy" />
+        ${LightboxImage(images.culturalPhotoLunchRoom, culturalPhotoRoom.title)}
       </div>
       <div class="reveal">
         <p class="eyebrow">Cultural Room</p>
@@ -166,6 +167,7 @@ app.innerHTML = `
       </form>
     </section>
   </main>
+  ${LightboxMarkup("Harla Hotel event image viewer")}
   ${Footer()}
 `;
 
@@ -235,4 +237,5 @@ const revealObserver = new IntersectionObserver(
 );
 
 document.querySelectorAll(".reveal").forEach((element) => revealObserver.observe(element));
+initImageLightbox();
 setHeaderState();

@@ -18,7 +18,7 @@ export const siteConfig = {
 
 export const whatsappLinks = {
   room: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20book%20a%20room.`,
-  table: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20reserve%20a%20table.`,
+  table: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20see%20the%20restaurant%20menu.`,
   vipRoom: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20reserve%20the%20VIP%20private%20room.`,
   event: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20plan%20an%20event.`,
   package: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20request%20a%20tour%20package.`,
@@ -60,12 +60,9 @@ export const images = {
     "./assets/rooms/harla-room-desk.jpeg",
     "./assets/hotel/harla-hotel-hallway.jpeg",
     "./assets/restaurant/harla-restaurant-gallery-1.jpeg",
-    "./assets/restaurant/harla-restaurant-vip-gallery-seating.jpeg",
-    "./assets/restaurant/harla-restaurant-vip-gallery-room.jpeg",
     "./assets/cultural/harari-cultural-house-room.jpeg",
     "./assets/cultural/harari-cultural-house-gate.jpeg",
     "./assets/events/harla-cultural-photo-lunch-room.jpeg",
-    "./assets/restaurant/harla-restaurant-vip-lounge.jpeg",
     "./assets/events/harla-event-hall.jpeg",
     "./assets/packages/harla-packages-brand-wall.jpeg",
   ],
@@ -244,7 +241,7 @@ export const eventGallery = [
 
 export const packages = [
   {
-    name: "2 Days / 1 Night Complete Harar Experience",
+    name: "2 Days / 1 Night Package",
     description:
       "A full Harla Hotel cultural stay for guests who want Harar's most memorable sights, flavors, and evening traditions in one easy package.",
     // REPLACE: Confirm final package inclusions, currency, and per-person pricing before publishing.
@@ -261,39 +258,11 @@ export const packages = [
     price: "400 USD per person",
   },
   {
-    name: "Harar City Sightseeing Tour",
+    name: "Harar Sightseeing Tour",
     description: "Step into the living story of Harar with a trusted local guide who helps every street feel meaningful.",
     // REPLACE: Update package details, inclusions, duration, and prices when final packages are confirmed.
     included: ["Hotel coordination", "Trusted local guide", "City route planning", "Photo stops"],
     duration: "Half day",
-    price: "Price on request",
-  },
-  {
-    name: "Historical Places Visit",
-    description: "Discover the old city, heritage sites, and local stories that make Harar unforgettable.",
-    included: ["Guide support", "Heritage route", "Museum/site planning", "Hotel pickup timing"],
-    duration: "3 - 5 hours",
-    price: "Price on request",
-  },
-  {
-    name: "Hyena Feeding Experience",
-    description: "End the evening with one of Harar's most famous cultural moments, planned with care and confidence.",
-    included: ["Evening coordination", "Local host connection", "Transport planning", "Guest support"],
-    duration: "Evening experience",
-    price: "Price on request",
-  },
-  {
-    name: "Cultural Food & Coffee Experience",
-    description: "Taste Harari warmth through food, coffee, and relaxed local moments beyond an ordinary hotel meal.",
-    included: ["Food stops", "Coffee experience", "Local recommendations", "Flexible group setup"],
-    duration: "2 - 4 hours",
-    price: "Price on request",
-  },
-  {
-    name: "Airport/Bus Station Pickup",
-    description: "Arrive calmly with pickup coordination that brings you straight into your Harla Hotel stay.",
-    included: ["Pickup planning", "Arrival tracking", "Luggage support", "Hotel check-in coordination"],
-    duration: "Arrival transfer",
     price: "Price on request",
   },
   {
@@ -312,4 +281,100 @@ export const menuPreview = [
   "Grilled meats and vegetarian plates",
   "Pastries and celebration cakes",
   "Private group dining menus",
+];
+
+// REPLACE: Update restaurant menu names, categories, descriptions, and prices when the final menu is ready.
+export const restaurantMenuItems = [
+  {
+    id: "harari-breakfast",
+    category: "Breakfast",
+    name: "Harari Breakfast Plate",
+    description: "A warm breakfast plate with tea or coffee service.",
+    price: 350,
+  },
+  {
+    id: "ethiopian-breakfast",
+    category: "Breakfast",
+    name: "Traditional Ethiopian Breakfast",
+    description: "Classic morning flavors for hotel guests and walk-in customers.",
+    price: 320,
+  },
+  {
+    id: "special-lunch",
+    category: "Lunch",
+    name: "Harla Special Lunch",
+    description: "A generous lunch plate prepared for dine in, take away, or delivery.",
+    price: 520,
+  },
+  {
+    id: "grilled-meat",
+    category: "Lunch",
+    name: "Grilled Meat Plate",
+    description: "Grilled meat with sides and fresh accompaniments.",
+    price: 650,
+  },
+  {
+    id: "vegetarian-plate",
+    category: "Lunch",
+    name: "Vegetarian Plate",
+    description: "A satisfying vegetarian selection with local flavor.",
+    price: 420,
+  },
+  {
+    id: "fresh-juice",
+    category: "Drinks",
+    name: "Fresh Juice",
+    description: "Seasonal fresh juice prepared to order.",
+    price: 180,
+  },
+  {
+    id: "coffee-ceremony",
+    category: "Drinks",
+    name: "Coffee Ceremony",
+    description: "A relaxed coffee ceremony experience for dine-in guests.",
+    price: 300,
+  },
+  {
+    id: "tea",
+    category: "Drinks",
+    name: "Tea",
+    description: "Hot tea served fresh.",
+    price: 90,
+  },
+];
+
+// Delivery-only pastry options. Cookies are ordered in kilograms.
+export const deliveryPastryItems = [
+  { id: "cake", name: "Cake" },
+  { id: "cookies", name: "Cookies" },
+  { id: "pastries", name: "Pastries" },
+  { id: "cupcakes", name: "Cupcakes" },
+];
+
+export const restaurantAddressAreas = [
+  "Arategna",
+  "Feres Megala",
+  "Shash Garage",
+  "Jugol",
+  "Piazza",
+  "Harar University Area",
+  "Other",
+];
+
+export const restaurantPaymentMethods = [
+  {
+    value: "cbe",
+    label: "CBE",
+    instructions: "CBE payment instructions placeholder. Replace with Harla Hotel CBE account details.",
+  },
+  {
+    value: "telebirr",
+    label: "Telebirr",
+    instructions: "Telebirr payment instructions placeholder. Replace with the Harla Hotel Telebirr number.",
+  },
+  {
+    value: "mpesa",
+    label: "M-Pesa",
+    instructions: "M-Pesa payment instructions placeholder. Replace with the Harla Hotel M-Pesa number.",
+  },
 ];

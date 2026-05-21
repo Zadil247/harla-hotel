@@ -1,5 +1,6 @@
-import { App } from "./components.js?v=20260507-supabase";
-import { siteConfig } from "./data.js?v=20260507-supabase";
+import { App } from "./components.js?v=20260519-client-feedback";
+import { siteConfig } from "./data.js?v=20260519-client-feedback";
+import { initImageLightbox } from "./lightbox.js?v=20260519-client-feedback";
 import {
   backendSetupMessage,
   createEventRequest,
@@ -97,6 +98,8 @@ const revealObserver = new IntersectionObserver(
 );
 
 document.querySelectorAll(".reveal").forEach((element) => revealObserver.observe(element));
+
+initImageLightbox();
 
 bookingForm.addEventListener("submit", async (event) => {
   event.preventDefault();

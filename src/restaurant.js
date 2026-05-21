@@ -1,4 +1,4 @@
-import { Footer, Navbar } from "./components.js?v=20260507-supabase";
+import { Footer, Navbar } from "./components.js?v=20260513-restaurant-order";
 import {
   images,
   menuPreview,
@@ -6,12 +6,7 @@ import {
   siteConfig,
   vipRoomGallery,
   whatsappLinks,
-} from "./data.js?v=20260507-supabase";
-import {
-  backendSetupMessage,
-  createRestaurantRequest,
-  isBackendReady,
-} from "./supabase-api.js?v=20260507-supabase";
+} from "./data.js?v=20260513-restaurant-order";
 
 const app = document.querySelector("#restaurant-app");
 const pageHeroImage = images.restaurant.replace("./", "/");
@@ -25,8 +20,8 @@ app.innerHTML = `
         <h1>${restaurantPage.title}</h1>
         <p>${restaurantPage.description}</p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="#restaurant-booking" data-restaurant-service="VIP Private Room reservation">Reserve VIP Room</a>
-          <a class="btn btn-light" href="#restaurant-booking" data-restaurant-service="Restaurant reservation">Reserve Table</a>
+          <a class="btn btn-primary" href="./restaurant-order.html">Restaurant Menu</a>
+          <a class="btn btn-light" href="./restaurant-order.html">Start Order</a>
           <a class="btn btn-whatsapp" href="${whatsappLinks.table}">Contact on WhatsApp</a>
         </div>
       </div>
@@ -45,7 +40,7 @@ app.innerHTML = `
           ${restaurantPage.features.map((feature) => `<li>${feature}</li>`).join("")}
         </ul>
         <div class="cta-row">
-          <a class="btn btn-primary" href="#restaurant-booking" data-restaurant-service="VIP Private Room reservation">Reserve VIP Room</a>
+          <a class="btn btn-primary" href="./restaurant-order.html">Restaurant Menu</a>
           <a class="btn btn-whatsapp" href="${whatsappLinks.vipRoom}">WhatsApp VIP Room</a>
         </div>
       </div>
@@ -93,59 +88,22 @@ app.innerHTML = `
 
     <section class="section contact" id="restaurant-booking" aria-labelledby="restaurant-booking-title">
       <div class="contact-copy reveal">
-        <p class="eyebrow">Restaurant Booking</p>
-        <h2 id="restaurant-booking-title">Reserve a table or VIP room</h2>
+        <p class="eyebrow">Restaurant Menu</p>
+        <h2 id="restaurant-booking-title">Order food, drinks, and delivery pastries</h2>
         <p>
-          Choose the reservation type, date, time, guests, and message. This form is ready to connect to Odoo
-          or another restaurant booking endpoint later.
+          Start with dine in, take away, or delivery. Dine-in customers can request the VIP room from the order page.
         </p>
         <div class="contact-list">
-          <a href="${whatsappLinks.table}">WhatsApp Table Reservation</a>
+          <a href="./restaurant-order.html">Open Restaurant Menu</a>
           <a href="${whatsappLinks.vipRoom}">WhatsApp VIP Room</a>
           <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>
         </div>
       </div>
-      <form class="booking-form reveal" id="restaurant-form">
-        <div class="form-grid">
-          <label>
-            Full name
-            <input name="fullName" type="text" autocomplete="name" required />
-          </label>
-          <label>
-            Phone
-            <input name="phone" type="tel" autocomplete="tel" required />
-          </label>
-          <label>
-            Email
-            <input name="email" type="email" autocomplete="email" />
-          </label>
-          <label>
-            Reservation type
-            <select name="serviceType" id="restaurant-service" required>
-              <option>Restaurant reservation</option>
-              <option>VIP Private Room reservation</option>
-            </select>
-          </label>
-          <label>
-            Reservation date
-            <input name="reservationDate" type="date" required />
-          </label>
-          <label>
-            Reservation time
-            <input name="reservationTime" type="time" required />
-          </label>
-          <label>
-            Number of guests
-            <input name="guests" type="number" min="1" required />
-          </label>
-          <label class="form-wide">
-            Message
-            <textarea name="message" rows="5" placeholder="Tell us about your table, VIP room, food, or coffee ceremony request..."></textarea>
-          </label>
-        </div>
-        <button class="btn btn-primary" type="submit">Send Restaurant Request</button>
-        <p class="form-status" role="status" aria-live="polite"></p>
-      </form>
+      <div class="booking-form reveal restaurant-menu-card">
+        <h3>Restaurant Menu</h3>
+        <p>Choose order type first, then select dishes, drinks, quantities, delivery pastries, and payment method.</p>
+        <a class="btn btn-primary" href="./restaurant-order.html">Restaurant Menu</a>
+      </div>
     </section>
   </main>
   ${Footer()}
@@ -154,8 +112,6 @@ app.innerHTML = `
 const header = document.querySelector("[data-header]");
 const navToggle = document.querySelector("[data-nav-toggle]");
 const navMenu = document.querySelector("[data-nav-menu]");
-const restaurantService = document.querySelector("#restaurant-service");
-const restaurantForm = document.querySelector("#restaurant-form");
 
 function setHeaderState() {
   header.classList.toggle("is-scrolled", window.scrollY > 20);
@@ -165,41 +121,6 @@ navToggle.addEventListener("click", () => {
   const expanded = navToggle.getAttribute("aria-expanded") === "true";
   navToggle.setAttribute("aria-expanded", String(!expanded));
   navMenu.classList.toggle("is-open");
-});
-
-document.querySelectorAll("[data-restaurant-service]").forEach((button) => {
-  button.addEventListener("click", () => {
-    restaurantService.value = button.dataset.restaurantService;
-  });
-});
-
-restaurantForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const restaurantRequest = Object.fromEntries(new FormData(restaurantForm).entries());
-  const status = restaurantForm.querySelector(".form-status");
-
-  if (!restaurantRequest.fullName?.trim() || !restaurantRequest.phone?.trim()) {
-    status.textContent = "Please enter your full name and phone number.";
-    return;
-  }
-
-  if (!isBackendReady()) {
-    console.info("Harla Hotel restaurant request", {
-      endpoint: siteConfig.bookingEndpoint,
-      restaurantRequest,
-    });
-    status.textContent = backendSetupMessage();
-    return;
-  }
-
-  try {
-    status.textContent = "Saving your restaurant request...";
-    await createRestaurantRequest(restaurantRequest);
-    status.textContent = "Thank you. Your restaurant request was saved as pending.";
-    restaurantForm.reset();
-  } catch (error) {
-    status.textContent = error.message || "Sorry, we could not save your restaurant request. Please try WhatsApp.";
-  }
 });
 
 window.addEventListener("scroll", setHeaderState, { passive: true });

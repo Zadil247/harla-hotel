@@ -26,12 +26,14 @@ http://127.0.0.1:4173/
 - Actual room and hotel photos: `assets/rooms/harla-room-bed.jpeg`, `assets/rooms/harla-room-desk.jpeg`, `assets/rooms/harla-honeymoon-grand-suite.jpeg`, `assets/hotel/harla-hotel-hallway.jpeg`, and `assets/hotel/harla-hotel-exterior.jpeg`.
 - Restaurant menu preview: `src/data.js`, inside `menuPreview`.
 - Restaurant VIP majlis and hotel VIP lounge text: `src/data.js`, inside `hospitalityHighlights`.
-- Dedicated restaurant page and reservation form: `restaurant.html` and `src/restaurant.js`.
+- Restaurant menu/order page: `restaurant-order.html` and `src/restaurant-order.js`.
+- Old restaurant compatibility redirect: `restaurant.html`.
 - Event services and feature wording: `src/data.js`, inside `services`, plus the Event Hall section in `src/components.js`.
 - Dedicated event hall page, Cultural Photo & Lunch Room, and catering options: `event-hall.html` and `src/event-hall.js`.
 - Packages and Harar experience deals: `src/data.js`, inside `packages`.
 - Booking form service options: `src/components.js`, inside `BookingForm()`.
 - Supabase schema and row-level security policies: `supabase/schema.sql`.
+- Restaurant orders migration for existing Supabase projects: `supabase/restaurant-orders.sql`.
 - Supabase connection settings: `.env.example`, `src/supabase-config.js`, `src/supabase-client.js`, and `src/supabase-api.js`.
 - Admin login: `admin-login.html` and `src/admin-login.js`.
 - Protected admin dashboard: `admin.html` and `src/admin.js`.
@@ -75,6 +77,6 @@ For the current static local server, fill the existing `window.HARLA_SUPABASE_CO
 - Admin login page: `admin-login.html`, also reachable through `/admin-login/`.
 - Protected admin dashboard: `admin.html`, also reachable through `/admin/`.
 - General homepage inquiry form: `src/main.js`.
-- Restaurant reservation form: `src/restaurant.js`.
+- Restaurant menu/order page: `restaurant-order.html`.
 - Event hall request forms: `src/event-hall.js` and `src/event-booking.js`.
 - Supabase insert/update helpers: `src/supabase-api.js`.

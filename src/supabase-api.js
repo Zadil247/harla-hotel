@@ -5,10 +5,11 @@ const requestTables = new Set([
   "room_bookings",
   "event_requests",
   "restaurant_requests",
+  "restaurant_orders",
   "package_bookings",
 ]);
 
-const validStatuses = new Set(["pending", "approved", "rejected"]);
+const validStatuses = new Set(["pending", "approved", "rejected", "declined"]);
 
 export function isBackendReady() {
   return hasSupabaseClient();
@@ -102,6 +103,51 @@ export async function createRestaurantRequest(payload) {
     guests: numberOrNull(payload.guests),
     message: optionalText(payload.message),
   });
+}
+
+export async function createRestaurantOrder(payload) {
+  return insertPending("restaurant_orders", {
+    customer_name: requireText(payload.customerName, "Customer name"),
+    phone: requireText(payload.phone, "Phone number"),
+    order_type: requireText(payload.orderType, "Order type"),
+    address_area: requireText(payload.addressArea, "Address area"),
+    custom_address: optionalText(payload.customAddress),
+    items: payload.items || [],
+    pastry_items: payload.pastryItems || [],
+    payment_method: requireText(payload.paymentMethod, "Payment method"),
+    payment_reference: optionalText(payload.paymentReference),
+    payment_screenshot_url: optionalText(payload.paymentScreenshotUrl),
+    payment_status: requireText(payload.paymentStatus, "Payment status"),
+  });
+}
+
+export async function uploadPaymentScreenshot(file) {
+  if (!file || !file.name) {
+    throw new Error("Payment screenshot is required.");
+  }
+
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Payment screenshot must be an image file.");
+  }
+
+  const supabase = await getSupabaseClient();
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const uniqueId =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const path = `restaurant-orders/${uniqueId}.${extension}`;
+  const { error } = await supabase.storage.from("payment-screenshots").upload(path, file, {
+    cacheControl: "3600",
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return path;
 }
 
 export async function createEventRequest(payload) {
@@ -213,6 +259,7 @@ export async function getAdminDashboardData() {
     roomBookings: supabase.from("room_bookings").select("*").order("created_at", { ascending: false }),
     eventRequests: supabase.from("event_requests").select("*").order("created_at", { ascending: false }),
     restaurantRequests: supabase.from("restaurant_requests").select("*").order("created_at", { ascending: false }),
+    restaurantOrders: supabase.from("restaurant_orders").select("*").order("created_at", { ascending: false }),
     packageBookings: supabase.from("package_bookings").select("*").order("created_at", { ascending: false }),
   };
 
@@ -226,7 +273,32 @@ export async function getAdminDashboardData() {
     }),
   );
 
-  return Object.fromEntries(entries);
+  const dashboardData = Object.fromEntries(entries);
+  dashboardData.restaurantOrders = await Promise.all(
+    (dashboardData.restaurantOrders || []).map(async (order) => {
+      if (!order.payment_screenshot_url) {
+        return order;
+      }
+
+      if (/^https?:\/\//.test(order.payment_screenshot_url)) {
+        return {
+          ...order,
+          payment_screenshot_display_url: order.payment_screenshot_url,
+        };
+      }
+
+      const { data } = await supabase.storage
+        .from("payment-screenshots")
+        .createSignedUrl(order.payment_screenshot_url, 60 * 60);
+
+      return {
+        ...order,
+        payment_screenshot_display_url: data?.signedUrl || "",
+      };
+    }),
+  );
+
+  return dashboardData;
 }
 
 export async function updateRequestStatus(table, id, status) {
