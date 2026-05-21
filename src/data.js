@@ -14,6 +14,8 @@ export const siteConfig = {
   tiktok: "#",
   // REPLACE: Change this to your Odoo, CRM, or booking API endpoint.
   bookingEndpoint: "/api/booking-inquiry",
+  // REPLACE: Swap this placeholder with the real Odoo POS URL when Harla is ready to use it.
+  odooPosUrl: "ODOO_POS_URL_PLACEHOLDER",
 };
 
 export const whatsappLinks = {
@@ -68,38 +70,42 @@ export const images = {
   ],
 };
 
-// REPLACE: Update room prices, availability, and images here when rates or room counts change.
+// REPLACE: Update room prices and images here when rates or room photography change.
+// Live room counts now come from Supabase table: room_inventory.
 export const roomBookingTypes = [
   {
-    slug: "double-bed-room",
-    name: "Double Bed Room",
+    slug: "queen-size-bed-room",
+    name: "Queen Size Bed Room",
     pricePerNight: 4000,
     priceLabel: "4,000 ETB per night",
-    availableRooms: 2,
-    image: images.rooms[0],
-    description: "A comfortable double-bed room for guests who want a polished, restful stay at Harla Hotel.",
-    features: ["Double bed", "Private bathroom", "Wi-Fi", "Workspace"],
-  },
-  {
-    slug: "queen-normal-room",
-    name: "Queen/Normal Room",
-    pricePerNight: 4000,
-    priceLabel: "4,000 ETB per night",
+    totalRooms: 8,
     availableRooms: 8,
-    image: images.rooms[1],
-    description: "A practical queen/normal room with warm finishes for business travelers, couples, and families.",
-    features: ["Queen bed", "Private bathroom", "Smart TV", "Room service option"],
+    image: images.rooms[0],
+    description: "A polished queen-size room for guests who want comfort, privacy, and warm Harla Hotel service.",
+    features: ["Queen-size bed", "Private bathroom", "Wi-Fi", "Workspace"],
   },
   {
-    slug: "cultural-king-room",
-    name: "Cultural King Room",
+    slug: "twin-bed-room",
+    name: "Twin Bed Room",
+    pricePerNight: 4000,
+    priceLabel: "4,000 ETB per night",
+    totalRooms: 2,
+    availableRooms: 2,
+    image: images.rooms[1],
+    description: "A flexible twin-bed room for friends, family members, and business guests traveling together.",
+    features: ["Twin beds", "Private bathroom", "Smart TV", "Room service option"],
+  },
+  {
+    slug: "vip-room",
+    name: "VIP Room",
     pricePerNight: 7000,
     priceLabel: "7,000 ETB per night",
+    totalRooms: 1,
     availableRooms: 1,
     image: images.culturalHouseRoom,
     description:
-      "A special Harari-style stay with a king-size bed, traditional living room, and private bathroom.",
-    features: ["King-size bed", "Harari traditional living room", "Private bathroom", "Cultural interior"],
+      "A special Harari-style VIP stay with a large cultural living room, private bedroom, and private bathroom.",
+    features: ["VIP bedroom", "Harari traditional living room", "Private bathroom", "Cultural interior"],
   },
 ];
 
@@ -110,7 +116,7 @@ export const rooms = [
     image: roomBookingTypes[0].image,
     bookingSlug: roomBookingTypes[0].slug,
     description: roomBookingTypes[0].description,
-    amenities: ["Double bed", "Workspace", "Wi-Fi", "Breakfast option"],
+    amenities: ["Queen-size bed", "Workspace", "Wi-Fi", "Breakfast option"],
   },
   {
     name: roomBookingTypes[1].name,
@@ -118,7 +124,15 @@ export const rooms = [
     image: roomBookingTypes[1].image,
     bookingSlug: roomBookingTypes[1].slug,
     description: roomBookingTypes[1].description,
-    amenities: ["Queen bed", "Private bathroom", "Smart TV", "Room service"],
+    amenities: ["Twin beds", "Private bathroom", "Smart TV", "Room service"],
+  },
+  {
+    name: roomBookingTypes[2].name,
+    price: roomBookingTypes[2].priceLabel,
+    image: roomBookingTypes[2].image,
+    bookingSlug: roomBookingTypes[2].slug,
+    description: roomBookingTypes[2].description,
+    amenities: ["VIP bedroom", "Harari living room", "Private bathroom", "Cultural interior"],
   },
 ];
 
@@ -128,7 +142,7 @@ export const harariCulturalHouse = {
     "This large traditional Harari-style house is usually used by newly wedded couples, but it can also be booked for other special stays. It blends a spacious cultural living room with a private bedroom and warm Harari hospitality.",
   features: [
     "Spacious Harari traditional living room",
-    "Private bedroom with a king-size bed",
+    "Private VIP bedroom",
     "Private bathroom",
     "Cultural interior design",
     "Suitable for couples, families, photography, and special occasions",
@@ -365,16 +379,16 @@ export const restaurantPaymentMethods = [
   {
     value: "cbe",
     label: "CBE",
-    instructions: "CBE payment instructions placeholder. Replace with Harla Hotel CBE account details.",
+    instructions: "CBE: 1000703782756 - Harla Hotel",
   },
   {
     value: "telebirr",
     label: "Telebirr",
-    instructions: "Telebirr payment instructions placeholder. Replace with the Harla Hotel Telebirr number.",
+    instructions: "Telebirr: 0915321828 - Rekib",
   },
   {
-    value: "mpesa",
-    label: "M-Pesa",
-    instructions: "M-Pesa payment instructions placeholder. Replace with the Harla Hotel M-Pesa number.",
+    value: "ebirr",
+    label: "E-Birr",
+    instructions: "E-Birr: 0915321188",
   },
 ];

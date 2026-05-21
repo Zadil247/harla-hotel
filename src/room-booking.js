@@ -1,29 +1,53 @@
-import { Footer, Navbar } from "./components.js?v=20260519-client-feedback";
-import { images, roomBookingTypes, siteConfig } from "./data.js?v=20260519-client-feedback";
-import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260519-client-feedback";
+import { Footer, Navbar } from "./components.js?v=20260521-room-automation";
+import { images, roomBookingTypes, siteConfig } from "./data.js?v=20260521-room-automation";
+import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260521-room-automation";
 import {
   backendSetupMessage,
   createRoomBooking,
+  getRoomInventory,
   isBackendReady,
-} from "./supabase-api.js?v=20260507-supabase";
+  subscribeRoomInventory,
+  uploadPaymentScreenshot,
+} from "./supabase-api.js?v=20260521-room-automation";
 
 const app = document.querySelector("#room-booking-app");
-const roomBySlug = new Map(roomBookingTypes.map((room) => [room.slug, room]));
-const totalAvailableRooms = roomBookingTypes.reduce((total, room) => total + room.availableRooms, 0);
 const roomSlugAliases = {
-  "queen-standard-room": "queen-normal-room",
-  "harari-cultural-room": "cultural-king-room",
+  "double-bed-room": "twin-bed-room",
+  "queen-normal-room": "queen-size-bed-room",
+  "queen-standard-room": "queen-size-bed-room",
+  "cultural-king-room": "vip-room",
+  "harari-cultural-room": "vip-room",
 };
 const requestedRoomSlug = new URLSearchParams(window.location.search).get("room");
 const initialRoomSlug = roomSlugAliases[requestedRoomSlug] || requestedRoomSlug;
+let inventoryByType = new Map(
+  roomBookingTypes.map((room) => [
+    room.name,
+    {
+      room_type: room.name,
+      total_rooms: room.totalRooms,
+      available_rooms: room.availableRooms,
+    },
+  ]),
+);
 
 function formatEtb(amount) {
-  return `${new Intl.NumberFormat("en-US").format(amount)} ETB`;
+  return `${new Intl.NumberFormat("en-US").format(Number(amount || 0))} ETB`;
+}
+
+function roomWithInventory(room) {
+  const inventory = inventoryByType.get(room.name);
+  return {
+    ...room,
+    totalRooms: inventory?.total_rooms ?? room.totalRooms,
+    availableRooms: inventory?.available_rooms ?? room.availableRooms,
+  };
 }
 
 function roomCard(room) {
+  const liveRoom = roomWithInventory(room);
   return `
-    <article class="room-type-card reveal" data-room-card="${room.slug}">
+    <article class="room-type-card reveal" data-room-card="${room.slug}" data-room-type="${room.name}">
       ${LightboxImage(room.image, room.name, "room-type-lightbox-image")}
       <div class="room-type-card-body">
         <p class="card-kicker">${room.priceLabel}</p>
@@ -33,13 +57,17 @@ function roomCard(room) {
           ${room.features.map((feature) => `<li>${feature}</li>`).join("")}
         </ul>
         <div class="room-availability">
-          <strong>${room.availableRooms}</strong>
-          <span>${room.availableRooms === 1 ? "room available" : "rooms available"}</span>
+          <strong data-room-card-available>${liveRoom.availableRooms}</strong>
+          <span data-room-card-total>available out of ${liveRoom.totalRooms}</span>
         </div>
         <button class="btn btn-primary" type="button" data-select-room="${room.slug}">Select this room</button>
       </div>
     </article>
   `;
+}
+
+function totalRooms() {
+  return Array.from(inventoryByType.values()).reduce((total, room) => total + Number(room.total_rooms || 0), 0);
 }
 
 app.innerHTML = `
@@ -50,32 +78,30 @@ app.innerHTML = `
         <p class="eyebrow">Room Booking</p>
         <h1>Book Your Stay at Harla Hotel</h1>
         <p>
-          Choose your preferred room type, select your stay dates, and send a room booking request.
-          Harla Hotel offers 11 rooms total, including the Cultural King Room for special stays.
+          Choose your preferred room type, send a pending booking request, and let Harla Hotel confirm
+          availability after payment review.
         </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="#room-booking-form-section">Start Booking</a>
-          <a class="btn btn-outline" href="./index.html#rooms">View Rooms</a>
+          <a class="btn btn-outline" href="./booking-status.html">Check Booking Status</a>
         </div>
       </div>
       <div class="room-total-card reveal">
-        <strong>${totalAvailableRooms}</strong>
-        <span>Total rooms including the Cultural King Room</span>
+        <strong data-total-rooms>${totalRooms()}</strong>
+        <span>Total rooms across Queen, Twin, and VIP room inventory</span>
       </div>
     </section>
 
     <section class="section room-type-section" aria-labelledby="room-types-title">
       <div class="section-heading reveal">
-        <p class="eyebrow">Room Types & Prices</p>
+        <p class="eyebrow">Room Types & Live Availability</p>
         <h2 id="room-types-title">Select the stay that fits your visit</h2>
-        <p>
-          Prices and room availability are shown as placeholders for the current Harla Hotel room setup.
-          Update them in the room data when rates or availability change.
-        </p>
+        <p>Live availability comes from Supabase room inventory and updates after admin confirmation.</p>
       </div>
       <div class="room-type-grid">
         ${roomBookingTypes.map(roomCard).join("")}
       </div>
+      <p class="availability-status" data-room-booking-inventory-status role="status" aria-live="polite"></p>
     </section>
 
     <section class="section room-booking-workspace" id="room-booking-form-section" aria-labelledby="room-booking-title">
@@ -83,13 +109,13 @@ app.innerHTML = `
         <p class="eyebrow">Booking Request</p>
         <h2 id="room-booking-title">Send your room request</h2>
         <p>
-          Select your room type, dates, guest count, and number of rooms. The estimate updates automatically
-          before you send the request or continue on WhatsApp.
+          Enter your stay details and payment information. Your request is saved as pending until Harla Hotel
+          reviews and confirms it in the admin dashboard.
         </p>
         <ul class="event-booking-list room-booking-list">
-          <li>Double Bed Room: max 2 rooms</li>
-          <li>Queen/Normal Room: max 8 rooms</li>
-          <li>Cultural King Room: max 1 room</li>
+          <li>Queen Size Bed Room</li>
+          <li>Twin Bed Room</li>
+          <li>VIP Room</li>
         </ul>
       </div>
 
@@ -104,7 +130,7 @@ app.innerHTML = `
             <input name="phone" type="tel" autocomplete="tel" required />
           </label>
           <label>
-            Email
+            Email address
             <input name="email" type="email" autocomplete="email" />
           </label>
           <label>
@@ -128,8 +154,22 @@ app.innerHTML = `
             <input name="guests" type="number" min="1" value="1" required />
           </label>
           <label>
-            Number of rooms
-            <input name="numberOfRooms" id="number-of-rooms" type="number" min="1" value="1" required />
+            Payment method
+            <select name="paymentMethod" id="room-payment-method" required>
+              <option value="">Choose payment method</option>
+              <option>Visa/Mastercard</option>
+              <option>CBE</option>
+              <option>Telebirr</option>
+              <option>E-Birr</option>
+            </select>
+          </label>
+          <label>
+            Transaction/reference ID <span class="optional-field">Optional</span>
+            <input name="paymentReference" type="text" placeholder="Transaction ID if available" />
+          </label>
+          <label>
+            Payment screenshot <span class="optional-field">Optional</span>
+            <input name="paymentScreenshot" type="file" accept="image/*" />
           </label>
           <label class="form-wide">
             Special requests/message
@@ -137,10 +177,14 @@ app.innerHTML = `
           </label>
         </div>
 
+        <div class="payment-instructions room-payment-instructions" data-payment-instructions>
+          Choose a payment method to see payment instructions.
+        </div>
+
         <div class="room-estimate-panel" aria-live="polite">
           <div>
             <span>Selected room</span>
-            <strong data-estimate-room>Double Bed Room</strong>
+            <strong data-estimate-room>Queen Size Bed Room</strong>
           </div>
           <div>
             <span>Price per night</span>
@@ -148,7 +192,7 @@ app.innerHTML = `
           </div>
           <div>
             <span>Available rooms</span>
-            <strong data-estimate-available>2</strong>
+            <strong data-estimate-available>Checking...</strong>
           </div>
           <div>
             <span>Nights</span>
@@ -161,7 +205,7 @@ app.innerHTML = `
         </div>
 
         <div class="room-booking-actions">
-          <button class="btn btn-primary" type="submit">Send Room Booking Request</button>
+          <button class="btn btn-primary" type="submit">Submit Room Booking</button>
           <!-- REPLACE: Update the WhatsApp number in src/data.js under siteConfig.whatsapp. -->
           <a class="btn btn-whatsapp" href="#" data-room-whatsapp>Confirm Booking on WhatsApp</a>
         </div>
@@ -180,13 +224,23 @@ const form = document.querySelector("#room-booking-form");
 const roomType = document.querySelector("#room-booking-room-type");
 const checkIn = document.querySelector("#room-check-in");
 const checkOut = document.querySelector("#room-check-out");
-const numberOfRooms = document.querySelector("#number-of-rooms");
+const paymentMethod = document.querySelector("#room-payment-method");
+const paymentInstructions = document.querySelector("[data-payment-instructions]");
 const whatsappButton = document.querySelector("[data-room-whatsapp]");
 const estimateRoom = document.querySelector("[data-estimate-room]");
 const estimatePrice = document.querySelector("[data-estimate-price]");
 const estimateAvailable = document.querySelector("[data-estimate-available]");
 const estimateNights = document.querySelector("[data-estimate-nights]");
 const estimateTotal = document.querySelector("[data-estimate-total]");
+const inventoryStatus = document.querySelector("[data-room-booking-inventory-status]");
+const totalRoomsNode = document.querySelector("[data-total-rooms]");
+
+const paymentMessages = {
+  "Visa/Mastercard": "Online card payment integration coming soon. Submit your request and Harla Hotel will confirm payment options.",
+  CBE: "CBE: 1000703782756 - Harla Hotel",
+  Telebirr: "Telebirr: 0915321828 - Rekib",
+  "E-Birr": "E-Birr: 0915321188",
+};
 
 function todayIso() {
   const now = new Date();
@@ -211,8 +265,12 @@ function calculateNights() {
   return nights > 0 ? nights : 0;
 }
 
+function baseSelectedRoom() {
+  return roomBookingTypes.find((room) => room.slug === roomType.value) || roomBookingTypes[0];
+}
+
 function selectedRoom() {
-  return roomBySlug.get(roomType.value) || roomBookingTypes[0];
+  return roomWithInventory(baseSelectedRoom());
 }
 
 function setHeaderState() {
@@ -230,50 +288,90 @@ function syncSelectedCards(room) {
   });
 }
 
-function buildWhatsAppHref(room, nights, rooms, total) {
+function buildWhatsAppHref(room, nights, total) {
   const message = [
     "Hello Harla Hotel, I want to confirm a room booking.",
     `Room type: ${room.name}`,
     checkIn.value ? `Check-in: ${checkIn.value}` : "",
     checkOut.value ? `Check-out: ${checkOut.value}` : "",
     nights ? `Nights: ${nights}` : "",
-    `Rooms: ${rooms}`,
     total ? `Estimated total: ${formatEtb(total)}` : "",
   ]
     .filter(Boolean)
-    .join("\\n");
+    .join("\n");
 
-  return `https://wa.me/${siteConfig.whatsapp.replace(/\\D/g, "")}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+}
+
+function updatePaymentInstructions() {
+  paymentInstructions.textContent =
+    paymentMessages[paymentMethod.value] || "Choose a payment method to see payment instructions.";
 }
 
 function updateEstimate() {
   const room = selectedRoom();
-  const maxRooms = room.availableRooms;
-
-  numberOfRooms.max = String(maxRooms);
-  if (Number(numberOfRooms.value) > maxRooms) {
-    numberOfRooms.value = String(maxRooms);
-  }
-  if (Number(numberOfRooms.value) < 1 || !numberOfRooms.value) {
-    numberOfRooms.value = "1";
-  }
-
   const nights = calculateNights();
-  const requestedRooms = Number(numberOfRooms.value);
-  const total = nights * room.pricePerNight * requestedRooms;
+  const total = nights * room.pricePerNight;
 
   estimateRoom.textContent = room.name;
   estimatePrice.textContent = room.priceLabel;
-  estimateAvailable.textContent = `${room.availableRooms} ${room.availableRooms === 1 ? "room" : "rooms"}`;
+  estimateAvailable.textContent = `${room.availableRooms} out of ${room.totalRooms}`;
   estimateNights.textContent = nights ? String(nights) : "Choose dates";
   estimateTotal.textContent = nights ? formatEtb(total) : "Choose dates";
 
-  whatsappButton.href = buildWhatsAppHref(room, nights, requestedRooms, total);
+  whatsappButton.href = buildWhatsAppHref(room, nights, total);
   syncSelectedCards(room);
 }
 
+function renderInventory(inventory) {
+  if (!inventory.length) {
+    inventoryStatus.textContent = "No room inventory records found in Supabase yet.";
+    return;
+  }
+
+  inventoryByType = new Map(
+    inventory.map((room) => [
+      room.room_type,
+      {
+        room_type: room.room_type,
+        total_rooms: Number(room.total_rooms || 0),
+        available_rooms: Number(room.available_rooms || 0),
+        updated_at: room.updated_at,
+      },
+    ]),
+  );
+
+  totalRoomsNode.textContent = String(totalRooms());
+
+  document.querySelectorAll("[data-room-type]").forEach((card) => {
+    const inventoryRoom = inventoryByType.get(card.dataset.roomType);
+    if (!inventoryRoom) {
+      return;
+    }
+    card.querySelector("[data-room-card-available]").textContent = String(inventoryRoom.available_rooms);
+    card.querySelector("[data-room-card-total]").textContent = `available out of ${inventoryRoom.total_rooms}`;
+  });
+
+  updateEstimate();
+}
+
+async function loadInventory() {
+  if (!isBackendReady()) {
+    inventoryStatus.textContent = backendSetupMessage();
+    updateEstimate();
+    return;
+  }
+
+  try {
+    renderInventory(await getRoomInventory());
+    inventoryStatus.textContent = "Room availability loaded from Supabase.";
+  } catch (error) {
+    inventoryStatus.textContent = error.message || "Could not load room availability.";
+  }
+}
+
 function selectRoom(slug) {
-  if (!roomBySlug.has(slug)) {
+  if (!roomBookingTypes.some((room) => room.slug === slug)) {
     return;
   }
 
@@ -297,7 +395,7 @@ document.querySelectorAll("[data-select-room]").forEach((button) => {
 });
 
 roomType.addEventListener("change", updateEstimate);
-numberOfRooms.addEventListener("input", updateEstimate);
+paymentMethod.addEventListener("change", updatePaymentInstructions);
 checkIn.addEventListener("change", () => {
   checkOut.min = addDaysIso(checkIn.value, 1);
   if (checkOut.value && checkOut.value <= checkIn.value) {
@@ -312,18 +410,24 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const room = selectedRoom();
   const nights = calculateNights();
-  const requestedRooms = Number(numberOfRooms.value);
   const status = form.querySelector(".form-status");
-  const formData = Object.fromEntries(new FormData(form).entries());
+  const formData = new FormData(form);
+  const screenshot = formData.get("paymentScreenshot");
+  const payload = Object.fromEntries(formData.entries());
 
-  if (!formData.fullName?.trim() || !formData.phone?.trim()) {
+  if (!payload.fullName?.trim() || !payload.phone?.trim()) {
     status.textContent = "Please enter your full name and phone number.";
     return;
   }
 
-  if (requestedRooms > room.availableRooms) {
-    status.textContent = `${room.name} has only ${room.availableRooms} ${room.availableRooms === 1 ? "room" : "rooms"} available.`;
-    numberOfRooms.focus();
+  if (!payload.paymentMethod) {
+    status.textContent = "Please choose a payment method.";
+    paymentMethod.focus();
+    return;
+  }
+
+  if (room.availableRooms < 1) {
+    status.textContent = `${room.name} is currently unavailable. Please choose another room type.`;
     return;
   }
 
@@ -333,31 +437,46 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  const roomBookingRequest = {
-    ...formData,
-    roomSlug: room.slug,
-    roomName: room.name,
-    pricePerNight: room.pricePerNight,
-    nights,
-    estimatedTotal: nights * room.pricePerNight * requestedRooms,
-  };
-
   if (!isBackendReady()) {
-    console.info("Harla Hotel room booking request", {
-      endpoint: siteConfig.bookingEndpoint,
-      roomBookingRequest,
-    });
     status.textContent = backendSetupMessage();
     return;
   }
 
   try {
     status.textContent = "Saving your room booking request...";
-    await createRoomBooking(roomBookingRequest);
-    status.textContent = "Thank you. Your room booking request was saved as pending.";
+    let paymentScreenshotUrl = "";
+
+    if (screenshot && screenshot.name) {
+      status.textContent = "Uploading payment screenshot...";
+      paymentScreenshotUrl = await uploadPaymentScreenshot(screenshot, "room-bookings");
+    }
+
+    const result = await createRoomBooking({
+      ...payload,
+      roomType: room.name,
+      roomSlug: room.slug,
+      roomName: room.name,
+      pricePerNight: room.pricePerNight,
+      nights,
+      estimatedTotal: nights * room.pricePerNight,
+      paymentScreenshotUrl,
+      paymentStatus:
+        payload.paymentMethod === "Visa/Mastercard"
+          ? "card_payment_pending"
+          : paymentScreenshotUrl || payload.paymentReference
+            ? "submitted_for_verification"
+            : "pending_payment_confirmation",
+    });
+
+    status.innerHTML = `
+      Thank you. Your room booking is pending review.
+      <strong>Booking number: ${result.booking_number}</strong>
+      <a class="text-link" href="./booking-status.html?booking=${encodeURIComponent(result.booking_number)}">Check booking status</a>
+    `;
     form.reset();
     roomType.value = room.slug;
-    updateEstimate();
+    updatePaymentInstructions();
+    await loadInventory();
   } catch (error) {
     status.textContent = error.message || "Sorry, we could not save your room request. Please try WhatsApp.";
   }
@@ -380,8 +499,14 @@ initImageLightbox();
 
 checkIn.min = todayIso();
 checkOut.min = addDaysIso(todayIso(), 1);
-if (initialRoomSlug && roomBySlug.has(initialRoomSlug)) {
+if (initialRoomSlug && roomBookingTypes.some((room) => room.slug === initialRoomSlug)) {
   roomType.value = initialRoomSlug;
 }
 setHeaderState();
+updatePaymentInstructions();
 updateEstimate();
+loadInventory();
+
+if (isBackendReady()) {
+  subscribeRoomInventory(renderInventory).catch(() => {});
+}

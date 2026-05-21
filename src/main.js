@@ -1,13 +1,15 @@
-import { App } from "./components.js?v=20260519-client-feedback";
-import { siteConfig } from "./data.js?v=20260519-client-feedback";
-import { initImageLightbox } from "./lightbox.js?v=20260519-client-feedback";
+import { App } from "./components.js?v=20260521-room-automation";
+import { siteConfig } from "./data.js?v=20260521-room-automation";
+import { initImageLightbox } from "./lightbox.js?v=20260521-room-automation";
 import {
   backendSetupMessage,
   createEventRequest,
   createPackageBooking,
   createRestaurantRequest,
+  getRoomInventory,
   isBackendReady,
-} from "./supabase-api.js?v=20260507-supabase";
+  subscribeRoomInventory,
+} from "./supabase-api.js?v=20260521-room-automation";
 
 const app = document.querySelector("#app");
 app.innerHTML = App();
@@ -48,6 +50,48 @@ function updateConditionalFields() {
   packageFields.forEach((field) => {
     field.hidden = selected !== "Hotel + tour package" && selected !== "Custom package request";
   });
+}
+
+function roomAvailabilityPercent(room) {
+  const total = Number(room.total_rooms || 0);
+  const available = Number(room.available_rooms || 0);
+  if (!total) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, (available / total) * 100));
+}
+
+function renderRoomAvailability(inventory) {
+  document.querySelectorAll("[data-availability-card]").forEach((card) => {
+    const room = inventory.find((item) => item.room_type === card.dataset.availabilityCard);
+    if (!room) {
+      return;
+    }
+
+    const available = Number(room.available_rooms || 0);
+    const total = Number(room.total_rooms || 0);
+    card.querySelector("[data-availability-text]").textContent = `Available: ${available} out of ${total}`;
+    card.querySelector("[data-availability-fill]").style.width = `${roomAvailabilityPercent(room)}%`;
+  });
+}
+
+async function loadRoomAvailability() {
+  const status = document.querySelector("[data-room-availability-status]");
+  if (!status) {
+    return;
+  }
+
+  if (!isBackendReady()) {
+    status.textContent = backendSetupMessage();
+    return;
+  }
+
+  try {
+    renderRoomAvailability(await getRoomInventory());
+    status.textContent = "Live availability loaded from Supabase.";
+  } catch (error) {
+    status.textContent = error.message || "Could not load room availability.";
+  }
 }
 
 function setServiceShortcut(service, packageDeal = "", room = "") {
@@ -153,3 +197,9 @@ bookingForm.addEventListener("submit", async (event) => {
 
 setHeaderState();
 updateConditionalFields();
+loadRoomAvailability();
+
+if (isBackendReady()) {
+  subscribeRoomInventory(renderRoomAvailability).catch(() => {});
+  window.setInterval(loadRoomAvailability, 30_000);
+}

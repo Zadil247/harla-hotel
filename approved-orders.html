@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Approved Orders | Harla Hotel</title>
+    <meta
+      name="description"
+      content="Approved Harla Hotel restaurant orders redirect to the protected admin dashboard."
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <script>
+      const query = window.location.search || "";
+      window.location.replace(`./admin.html${query}#approved-orders`);
+    </script>
+  </head>
+  <body class="admin-page">
+    <main class="admin-shell">
+      <section class="admin-card">
+        <h1>Opening Approved Orders...</h1>
+        <p>
+          If you are not redirected automatically,
+          <a href="./admin.html#approved-orders">open approved orders in the admin dashboard</a>.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

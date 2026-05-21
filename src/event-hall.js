@@ -1,11 +1,11 @@
-import { Footer, Navbar, ServiceCard } from "./components.js?v=20260519-client-feedback";
-import { culturalPhotoRoom, eventGallery, images, services, siteConfig, whatsappLinks } from "./data.js?v=20260519-client-feedback";
-import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260519-client-feedback";
+import { Footer, Navbar, ServiceCard } from "./components.js?v=20260521-restaurant-workflow";
+import { culturalPhotoRoom, eventGallery, images, services, siteConfig, whatsappLinks } from "./data.js?v=20260521-restaurant-workflow";
+import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260521-restaurant-workflow";
 import {
   backendSetupMessage,
   createEventRequest,
   isBackendReady,
-} from "./supabase-api.js?v=20260507-supabase";
+} from "./supabase-api.js?v=20260521-restaurant-workflow";
 
 const app = document.querySelector("#event-hall-app");
 const pageHeroImage = images.event.replace("./", "/");

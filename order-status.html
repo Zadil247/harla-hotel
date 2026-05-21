@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Restaurant Menu | Harla Hotel</title>
+    <title>Restaurant Order Status | Harla Hotel</title>
     <meta
       name="description"
-      content="Browse the Harla Hotel restaurant menu, choose dine in, take away, or delivery, and submit a restaurant order request."
+      content="Check your Harla Hotel restaurant order status using your order number and phone number."
     />
     <link rel="stylesheet" href="./src/styles.css" />
     <!-- REPLACE: For the current static site, paste your Supabase URL and anon key here. For Vite, use .env instead. -->
     <script>
       window.HARLA_SUPABASE_CONFIG = { url: "", anonKey: "" };
     </script>
-    <script type="module" src="./src/restaurant-order.js?v=20260521-restaurant-rls-fix"></script>
+    <script type="module" src="./src/order-status.js?v=20260521-restaurant-workflow"></script>
   </head>
   <body class="restaurant-order-page">
-    <a class="skip-link" href="#restaurant-order-main">Skip to restaurant menu</a>
-    <div id="restaurant-order-app"></div>
+    <a class="skip-link" href="#order-status-main">Skip to order status</a>
+    <div id="order-status-app"></div>
   </body>
 </html>

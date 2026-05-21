@@ -1,9 +1,9 @@
-import { images, siteConfig } from "./data.js?v=20260507-supabase";
+import { images, siteConfig } from "./data.js?v=20260521-restaurant-workflow";
 import {
   backendSetupMessage,
   createEventRequest,
   isBackendReady,
-} from "./supabase-api.js?v=20260507-supabase";
+} from "./supabase-api.js?v=20260521-restaurant-workflow";
 
 const app = document.querySelector("#event-booking-app");
 

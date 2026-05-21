@@ -1,4 +1,4 @@
-import { Footer, Navbar } from "./components.js?v=20260513-restaurant-order";
+import { Footer, Navbar } from "./components.js?v=20260521-restaurant-workflow";
 import {
   images,
   menuPreview,
@@ -6,7 +6,7 @@ import {
   siteConfig,
   vipRoomGallery,
   whatsappLinks,
-} from "./data.js?v=20260513-restaurant-order";
+} from "./data.js?v=20260521-restaurant-workflow";
 
 const app = document.querySelector("#restaurant-app");
 const pageHeroImage = images.restaurant.replace("./", "/");

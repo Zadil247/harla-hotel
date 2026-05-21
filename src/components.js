@@ -2,13 +2,14 @@ import {
   harariCulturalHouse,
   images,
   packages,
+  roomBookingTypes,
   roomHighlights,
   rooms,
   services,
   siteConfig,
   whatsappLinks,
-} from "./data.js?v=20260519-client-feedback";
-import { LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260519-client-feedback";
+} from "./data.js?v=20260521-room-automation";
+import { LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260521-room-automation";
 
 const navLinks = [
   ["About", "./index.html#about", "about"],
@@ -95,6 +96,37 @@ export function RoomCard(room) {
   `;
 }
 
+export function RoomAvailabilitySection() {
+  return `
+    <section class="section room-availability-section" id="room-availability" aria-labelledby="room-availability-title">
+      <div class="section-heading reveal">
+        <p class="eyebrow">Live Room Inventory</p>
+        <h2 id="room-availability-title">Room Availability</h2>
+        <p>Availability updates from Harla Hotel's Supabase room inventory when bookings are confirmed.</p>
+      </div>
+      <div class="availability-grid" data-room-availability-grid>
+        ${roomBookingTypes
+          .map(
+            (room) => `
+              <article class="availability-card reveal" data-availability-card="${room.name}">
+                <h3>${room.name}</h3>
+                <p><span data-availability-text>Available: ${room.availableRooms} out of ${room.totalRooms}</span></p>
+                <div class="availability-bar" aria-hidden="true">
+                  <span data-availability-fill style="width: ${(room.availableRooms / room.totalRooms) * 100}%"></span>
+                </div>
+              </article>
+            `,
+          )
+          .join("")}
+      </div>
+      <p class="availability-status" data-room-availability-status role="status" aria-live="polite"></p>
+      <div class="availability-actions reveal">
+        <a class="btn btn-primary" href="./book-room.html">Book Now</a>
+      </div>
+    </section>
+  `;
+}
+
 export function ServiceCard(service) {
   return `
     <article class="service-card reveal">
@@ -142,7 +174,6 @@ export function PackagesSection() {
             sightseeing, cultural food, coffee, transfers, and guided experiences.
           </p>
         </div>
-        ${LightboxImage(images.packages, "Travel experience preview for guests visiting Harar", "packages-preview-image")}
       </div>
       <div class="package-grid">
         ${packages.map(PackageCard).join("")}
@@ -182,7 +213,7 @@ export function HarariCulturalHouseSection() {
           ${harariCulturalHouse.features.map((item) => `<li>${item}</li>`).join("")}
         </ul>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="./book-room.html?room=cultural-king-room">Request Stay</a>
+          <a class="btn btn-primary" href="./book-room.html?room=vip-room">Request Stay</a>
           <a class="btn btn-whatsapp" href="${whatsappLinks.room}">WhatsApp Room</a>
         </div>
       </div>
@@ -353,9 +384,8 @@ export function BookingForm() {
         <label data-room-field>
           Preferred room
           <select name="roomType" id="room-type">
-            <option value="">Select a room or suite</option>
+            <option value="">Select a room</option>
             ${rooms.map((room) => `<option>${room.name}</option>`).join("")}
-            <option>${harariCulturalHouse.title}</option>
           </select>
         </label>
         <label data-event-field>
@@ -461,6 +491,7 @@ export function App() {
         </div>
       </section>
 
+      ${RoomAvailabilitySection()}
       ${HarariCulturalHouseSection()}
       ${RestaurantOrderOptionsSection()}
       ${EventPreview()}

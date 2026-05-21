@@ -1,5 +1,5 @@
-import { Navbar } from "./components.js?v=20260507-supabase";
-import { images, siteConfig } from "./data.js?v=20260507-supabase";
+import { Navbar } from "./components.js?v=20260521-room-automation";
+import { images, siteConfig } from "./data.js?v=20260521-room-automation";
 import {
   backendSetupMessage,
   getAdminSession,
@@ -7,11 +7,12 @@ import {
   isBackendReady,
   signInAdmin,
   signOutAdmin,
-} from "./supabase-api.js?v=20260507-supabase";
+} from "./supabase-api.js?v=20260521-room-automation";
 
 const app = document.querySelector("#admin-login-app");
 const params = new URLSearchParams(window.location.search);
 const nextPage = params.get("next") || "admin.html";
+const authTimeoutMs = 18000;
 
 const messageMap = {
   "signed-out": "Signed out successfully.",
@@ -65,6 +66,26 @@ function shell(content) {
 
   document.querySelector("[data-header]")?.classList.add("is-scrolled");
   wireNav();
+}
+
+function withTimeout(promise, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), authTimeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+}
+
+function renderLoading() {
+  shell(`
+    <section class="admin-card">
+      <h2>Checking admin session...</h2>
+      <p class="form-status" role="status" aria-live="polite">
+        Connecting to Supabase Auth. If this takes too long, refresh the page and try again.
+      </p>
+    </section>
+  `);
 }
 
 function renderSetupNotice() {
@@ -143,19 +164,27 @@ async function initLogin() {
     return;
   }
 
+  renderLoading();
+
   try {
-    const session = await getAdminSession();
+    const session = await withTimeout(
+      getAdminSession(),
+      "Supabase Auth did not respond while checking the current session.",
+    );
 
     if (session) {
-      const profile = await getCurrentAdminProfile();
+      const profile = await withTimeout(
+        getCurrentAdminProfile(),
+        "Supabase did not respond while checking this admin profile.",
+      );
       if (profile) {
         window.location.replace(safeNextUrl());
         return;
       }
-      await signOutAdmin();
+      await withTimeout(signOutAdmin(), "Supabase Auth did not respond while signing out.").catch(() => {});
     }
   } catch (error) {
-    await signOutAdmin().catch(() => {});
+    await withTimeout(signOutAdmin(), "Supabase Auth did not respond while signing out.").catch(() => {});
   }
 
   const message = messageMap[params.get("message")] || params.get("message") || "";

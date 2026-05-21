@@ -1,4 +1,4 @@
-import { isSupabaseConfigured, supabaseConfig, supabaseSetupMessage } from "./supabase-config.js?v=20260507-supabase";
+import { isSupabaseConfigured, supabaseConfig, supabaseSetupMessage } from "./supabase-config.js?v=20260521-room-automation";
 
 let clientPromise;
 

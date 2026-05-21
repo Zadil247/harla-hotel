@@ -989,9 +989,7 @@ body.is-lightbox-open {
 
 .packages-intro {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.76fr);
-  gap: 42px;
-  align-items: center;
+  max-width: 920px;
   margin-bottom: 34px;
 }
 
@@ -1166,6 +1164,90 @@ body.is-lightbox-open {
   color: var(--green);
   font-size: 1.7rem;
   line-height: 1;
+}
+
+.room-availability-section {
+  width: min(100% - 32px, 1220px);
+  margin: 0 auto;
+  border: 1px solid rgba(199, 155, 43, 0.42);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.68), transparent 28%),
+    linear-gradient(135deg, #fff6bf 0%, #ffd923 48%, #e9b900 100%);
+  box-shadow: 0 30px 80px rgba(122, 83, 8, 0.18);
+  padding: clamp(54px, 8vw, 88px) clamp(18px, 5vw, 64px);
+}
+
+.room-availability-section .section-heading {
+  margin-bottom: 34px;
+  text-align: center;
+}
+
+.room-availability-section .section-heading h2 {
+  color: #7a4d12;
+  font-size: clamp(2.8rem, 7vw, 5.2rem);
+}
+
+.availability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(18px, 3vw, 34px);
+}
+
+.availability-card {
+  display: grid;
+  gap: 18px;
+  min-height: 230px;
+  border: 1px solid rgba(255, 236, 139, 0.88);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 209, 0, 0.72));
+  padding: clamp(24px, 4vw, 38px);
+  box-shadow: 0 20px 45px rgba(106, 76, 8, 0.18);
+}
+
+.availability-card h3 {
+  margin: 0;
+  color: #71450c;
+  text-align: center;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+}
+
+.availability-card p {
+  margin: 0;
+  color: #71450c;
+  text-align: center;
+  font-size: clamp(1.12rem, 2vw, 1.55rem);
+  font-weight: 900;
+}
+
+.availability-bar {
+  overflow: hidden;
+  height: 15px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.availability-bar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #b98509, #f6c20f);
+  transition: width 700ms ease;
+}
+
+.availability-status {
+  min-height: 22px;
+  margin: 22px 0 0;
+  color: #71450c;
+  text-align: center;
+  font-weight: 900;
+}
+
+.availability-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
 }
 
 .room-booking-workspace {
@@ -1561,9 +1643,7 @@ textarea {
 }
 
 .restaurant-order-page {
-  background:
-    linear-gradient(180deg, rgba(255, 250, 240, 0.98), rgba(243, 234, 215, 0.98)),
-    url("../assets/restaurant/harla-restaurant-gallery-1.jpeg") center/cover fixed;
+  background: linear-gradient(180deg, #fffaf0, #f3ead7);
 }
 
 .restaurant-order-hero {
@@ -1575,6 +1655,10 @@ textarea {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.22)),
     var(--page-hero-image) center/cover;
+}
+
+.restaurant-order-hero.compact-hero {
+  min-height: 44svh;
 }
 
 .order-container {
@@ -1848,6 +1932,32 @@ textarea {
   font-weight: 800;
 }
 
+.room-payment-instructions {
+  grid-column: 1 / -1;
+  margin-top: 18px;
+}
+
+.optional-field {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.order-unavailable-notice {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(155, 44, 31, 0.22);
+  border-radius: var(--radius);
+  background: #fff1ec;
+  padding: 16px;
+  color: #7d281d;
+}
+
+.order-unavailable-notice p {
+  margin: 0;
+}
+
 .order-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1857,6 +1967,62 @@ textarea {
 
 .success-card {
   max-width: 780px;
+}
+
+.order-number-card {
+  display: inline-grid;
+  gap: 4px;
+  margin: 12px 0 16px;
+  border: 1px solid rgba(199, 155, 43, 0.42);
+  border-radius: var(--radius);
+  background: #fff7e7;
+  padding: 14px 18px;
+}
+
+.order-number-card span {
+  color: var(--muted);
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.order-number-card strong {
+  color: var(--green);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  letter-spacing: 0.04em;
+}
+
+.status-workspace {
+  grid-template-columns: minmax(0, 0.9fr) minmax(290px, 0.7fr);
+}
+
+.order-status-result {
+  align-self: start;
+}
+
+.status-details {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.status-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.status-details dt {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.status-details dd {
+  margin: 0;
+  font-weight: 900;
+  text-align: right;
 }
 
 .restaurant-menu-card {
@@ -1919,6 +2085,141 @@ textarea {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 16px 45px rgba(0, 0, 0, 0.08);
+}
+
+.admin-restaurant-orders {
+  display: grid;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.admin-room-bookings {
+  display: grid;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.room-inventory-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.room-inventory-admin-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fffdf8;
+  padding: 14px;
+}
+
+.room-inventory-admin-form h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.restaurant-settings-card {
+  display: grid;
+  gap: 18px;
+}
+
+.compact-heading {
+  padding: 0;
+}
+
+.admin-settings-form {
+  display: grid;
+  gap: 14px;
+}
+
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--green);
+  font-weight: 900;
+}
+
+.toggle-row input {
+  width: auto;
+}
+
+.admin-order-grid {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.admin-order-card {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius);
+  background: #fffdf8;
+  padding: 18px;
+}
+
+.admin-order-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.admin-order-card-head h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.admin-order-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.admin-order-details div {
+  border: 1px solid rgba(23, 23, 23, 0.08);
+  border-radius: var(--radius);
+  background: var(--white);
+  padding: 10px;
+}
+
+.admin-order-details dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-order-details dd {
+  margin: 4px 0 0;
+}
+
+.admin-help-note {
+  margin: 0 18px 18px;
+  border: 1px dashed rgba(199, 155, 43, 0.62);
+  border-radius: var(--radius);
+  background: #fff7e7;
+  padding: 14px;
+  color: var(--green);
+}
+
+.admin-help-note p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.admin-odoo-actions {
+  align-items: center;
+}
+
+.empty-state {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 900;
 }
 
 .admin-card {
@@ -2064,7 +2365,18 @@ textarea {
   color: #1f6b32;
 }
 
+.status-confirmed {
+  background: #e8f6ea;
+  color: #1f6b32;
+}
+
 .status-rejected {
+  background: #fbe7e3;
+  color: #9b2c1f;
+}
+
+.status-declined,
+.status-unavailable {
   background: #fbe7e3;
   color: #9b2c1f;
 }
@@ -2072,6 +2384,11 @@ textarea {
 .status-pending {
   background: #fff2cf;
   color: #8a610e;
+}
+
+.status-available {
+  background: #e8f6ea;
+  color: #1f6b32;
 }
 
 .admin-actions {
@@ -2164,6 +2481,7 @@ textarea {
   .admin-login,
   .admin-hero,
   .order-workspace,
+  .status-workspace,
   .room-booking-hero,
   .room-booking-workspace,
   .event-booking-layout,
@@ -2177,6 +2495,8 @@ textarea {
 
   .room-grid,
   .room-type-grid,
+  .availability-grid,
+  .room-inventory-admin-grid,
   .service-grid,
   .order-option-grid,
   .order-type-grid,
@@ -2261,6 +2581,8 @@ textarea {
   .stats,
   .room-grid,
   .room-type-grid,
+  .availability-grid,
+  .room-inventory-admin-grid,
   .service-grid,
   .package-grid,
   .order-option-grid,
@@ -2387,5 +2709,9 @@ textarea {
 
   .admin-toolbar div {
     margin-right: 0;
+  }
+
+  .admin-order-details {
+    grid-template-columns: 1fr;
   }
 }

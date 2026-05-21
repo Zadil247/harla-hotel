@@ -1,4 +1,4 @@
-import { Footer, Navbar } from "./components.js?v=20260519-client-feedback";
+import { Footer, Navbar } from "./components.js?v=20260521-restaurant-workflow";
 import {
   deliveryPastryItems,
   images,
@@ -7,13 +7,14 @@ import {
   restaurantPaymentMethods,
   siteConfig,
   whatsappLinks,
-} from "./data.js?v=20260519-client-feedback";
+} from "./data.js?v=20260521-restaurant-workflow";
 import {
   backendSetupMessage,
   createRestaurantOrder,
+  getRestaurantSettings,
   isBackendReady,
   uploadPaymentScreenshot,
-} from "./supabase-api.js?v=20260513-restaurant-order";
+} from "./supabase-api.js?v=20260521-restaurant-rls-fix";
 
 const app = document.querySelector("#restaurant-order-app");
 const orderTypes = [
@@ -48,6 +49,12 @@ const state = {
     deliveryPastryItems.map((item) => [item.id, { kilograms: 0, level: "Level 1" }]),
   ),
   paymentChoice: initialOrder && initialOrder !== "dine_in" ? "online" : "cash_at_hotel",
+  restaurantSettings: {
+    ordering_available: true,
+    custom_message: "",
+  },
+  settingsLoaded: false,
+  submittedOrderNumber: "",
 };
 
 function formatEtb(amount) {
@@ -66,6 +73,23 @@ function vipRoomWhatsAppUrl() {
 
 function paymentMethodLabel(value) {
   return restaurantPaymentMethods.find((method) => method.value === value)?.label || value;
+}
+
+function orderingUnavailable() {
+  return state.settingsLoaded && !state.restaurantSettings.ordering_available;
+}
+
+function availabilityNotice() {
+  if (!orderingUnavailable()) {
+    return "";
+  }
+
+  return `
+    <div class="order-unavailable-notice" role="status">
+      <strong>Restaurant ordering is currently unavailable.</strong>
+      <p>${state.restaurantSettings.custom_message || "Ordering is unavailable at the moment. Please call us for more info."}</p>
+    </div>
+  `;
 }
 
 function selectedItems() {
@@ -215,6 +239,7 @@ function renderMenuStep(message = "") {
     ${orderSteps()}
     <section class="order-workspace">
       <div class="order-main">
+        ${availabilityNotice()}
         <div class="section-heading">
           <p class="eyebrow">${orderTypeLabel()} Order</p>
           <h2>Choose food and drinks</h2>
@@ -248,7 +273,7 @@ function renderMenuStep(message = "") {
         }
         <div class="order-actions">
           <a class="btn btn-light" href="./index.html#restaurant-order-options">Change Order Type</a>
-          <button class="btn btn-primary" type="button" data-confirm-menu>Confirm Order</button>
+          <button class="btn btn-primary" type="button" data-confirm-menu ${orderingUnavailable() ? "disabled" : ""}>Confirm Order</button>
         </div>
         <p class="form-status" role="status" aria-live="polite">${message}</p>
       </div>
@@ -287,10 +312,10 @@ function paymentFields() {
         </div>
         <label>
           Payment reference / transaction ID
-          <input name="paymentReference" type="text" placeholder="Paste CBE, Telebirr, or M-Pesa transaction ID" />
+          <input name="paymentReference" type="text" placeholder="Optional CBE, Telebirr, or E-Birr transaction ID" />
         </label>
         <label>
-          Payment screenshot
+          Payment screenshot <span class="optional-field">optional</span>
           <input name="paymentScreenshot" type="file" accept="image/*" />
         </label>
       </div>
@@ -305,6 +330,7 @@ function renderDetailsStep(message = "") {
     ${orderSteps()}
     <section class="order-workspace">
       <form class="booking-form order-details-form" id="restaurant-order-form">
+        ${availabilityNotice()}
         <div class="section-heading">
           <p class="eyebrow">${orderTypeLabel()} Details</p>
           <h2>Customer details and payment</h2>
@@ -340,7 +366,7 @@ function renderDetailsStep(message = "") {
         ${paymentFields()}
         <div class="order-actions">
           <button class="btn btn-light" type="button" data-back-to-menu>Back to Menu</button>
-          <button class="btn btn-primary" type="submit">Submit Order</button>
+          <button class="btn btn-primary" type="submit" ${orderingUnavailable() ? "disabled" : ""}>Submit Order</button>
         </div>
         <p class="form-status" role="status" aria-live="polite">${message}</p>
       </form>
@@ -350,13 +376,20 @@ function renderDetailsStep(message = "") {
 }
 
 function renderSuccess() {
+  const statusHref = `./order-status.html?order=${encodeURIComponent(state.submittedOrderNumber)}`;
+
   return `
     ${orderSteps()}
     <section class="order-panel success-card">
       <p class="eyebrow">Order Submitted</p>
       <h2>Thank you. Harla Hotel received your order.</h2>
+      <div class="order-number-card">
+        <span>Your order number</span>
+        <strong>${state.submittedOrderNumber}</strong>
+      </div>
       <p>Your order is pending review. If payment was submitted online, the team will verify the transaction.</p>
       <div class="hero-actions">
+        <a class="btn btn-primary" href="${statusHref}">Check Order Status</a>
         <a class="btn btn-primary" href="./restaurant-order.html">Start Another Order</a>
         <a class="btn btn-whatsapp" href="${whatsappLinks.table}">Contact on WhatsApp</a>
       </div>
@@ -411,6 +444,11 @@ function bindEvents() {
   });
 
   document.querySelector("[data-confirm-menu]")?.addEventListener("click", () => {
+    if (orderingUnavailable()) {
+      render(state.restaurantSettings.custom_message || "Ordering is unavailable at the moment.");
+      return;
+    }
+
     if (!selectedItems().length && !selectedPastries().length) {
       render("Please select at least one menu item before confirming.");
       return;
@@ -477,6 +515,11 @@ async function submitOrder(event) {
     return;
   }
 
+  if (orderingUnavailable()) {
+    status.textContent = state.restaurantSettings.custom_message || "Ordering is unavailable at the moment.";
+    return;
+  }
+
   if (state.orderType === "delivery" && !formData.addressArea) {
     status.textContent = "Please select the delivery address area.";
     return;
@@ -487,16 +530,8 @@ async function submitOrder(event) {
     return;
   }
 
-  if (onlinePaymentRequired && (!formData.paymentMethod || !formData.paymentReference?.trim())) {
-    status.textContent = "Please choose payment method and enter the transaction reference.";
-    return;
-  }
-
-  if (
-    onlinePaymentRequired &&
-    (!(paymentScreenshot instanceof File) || !paymentScreenshot.name)
-  ) {
-    status.textContent = "Please upload the payment screenshot image.";
+  if (onlinePaymentRequired && !formData.paymentMethod) {
+    status.textContent = "Please choose a payment method.";
     return;
   }
 
@@ -504,12 +539,12 @@ async function submitOrder(event) {
     customerName: formData.customerName,
     phone: formData.phone,
     orderType: orderTypeLabel(),
-    addressArea: state.orderType === "delivery" ? formData.addressArea : "Not required",
+    addressArea: state.orderType === "delivery" ? formData.addressArea : "",
     customAddress: state.orderType === "delivery" ? formData.customAddress : "",
     items: selectedItems(),
     pastryItems: selectedPastries(),
     paymentMethod: onlinePaymentRequired ? paymentMethodLabel(formData.paymentMethod) : "cash_at_hotel",
-    paymentReference: onlinePaymentRequired ? formData.paymentReference : "",
+    paymentReference: onlinePaymentRequired ? formData.paymentReference || "" : "",
     paymentStatus: onlinePaymentRequired ? "submitted_for_verification" : "pay_at_hotel",
     paymentScreenshotUrl: "",
   };
@@ -528,10 +563,11 @@ async function submitOrder(event) {
 
   try {
     status.textContent = "Submitting order...";
-    if (onlinePaymentRequired) {
+    if (onlinePaymentRequired && paymentScreenshot instanceof File && paymentScreenshot.name) {
       orderPayload.paymentScreenshotUrl = await uploadPaymentScreenshot(paymentScreenshot);
     }
-    await createRestaurantOrder(orderPayload);
+    const savedOrder = await createRestaurantOrder(orderPayload);
+    state.submittedOrderNumber = savedOrder.order_number;
     state.step = "success";
     render();
   } catch (error) {
@@ -539,4 +575,17 @@ async function submitOrder(event) {
   }
 }
 
-render();
+async function init() {
+  if (isBackendReady()) {
+    try {
+      state.restaurantSettings = await getRestaurantSettings();
+    } catch (error) {
+      console.warn("Could not load restaurant ordering settings", error);
+    }
+  }
+
+  state.settingsLoaded = true;
+  render();
+}
+
+init();
