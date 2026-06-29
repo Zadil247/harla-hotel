@@ -88,7 +88,7 @@ async function loadRoomAvailability() {
 
   try {
     renderRoomAvailability(await getRoomInventory());
-    status.textContent = "Live availability loaded from Supabase.";
+    status.textContent = "";
   } catch (error) {
     status.textContent = error.message || "Could not load room availability.";
   }

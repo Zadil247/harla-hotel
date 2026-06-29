@@ -1169,23 +1169,50 @@ body.is-lightbox-open {
 .room-availability-section {
   width: min(100% - 32px, 1220px);
   margin: 0 auto;
-  border: 1px solid rgba(199, 155, 43, 0.42);
-  border-radius: 28px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(199, 155, 43, 0.64);
+  border-radius: 24px;
   background:
-    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.68), transparent 28%),
-    linear-gradient(135deg, #fff6bf 0%, #ffd923 48%, #e9b900 100%);
-  box-shadow: 0 30px 80px rgba(122, 83, 8, 0.18);
-  padding: clamp(54px, 8vw, 88px) clamp(18px, 5vw, 64px);
+    radial-gradient(circle at 18% 0%, rgba(244, 203, 93, 0.24), transparent 34%),
+    radial-gradient(circle at 84% 18%, rgba(199, 155, 43, 0.16), transparent 32%),
+    linear-gradient(145deg, #080808 0%, #17130b 48%, #060606 100%);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 230, 156, 0.14);
+  padding: clamp(52px, 8vw, 82px) clamp(18px, 5vw, 64px);
+}
+
+.room-availability-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 224, 141, 0.08), transparent),
+    radial-gradient(circle at 50% 110%, rgba(244, 203, 93, 0.14), transparent 34%);
+}
+
+.room-availability-section > * {
+  position: relative;
+  z-index: 1;
 }
 
 .room-availability-section .section-heading {
-  margin-bottom: 34px;
+  width: 100%;
+  max-width: none;
+  margin: 0 auto 36px;
   text-align: center;
 }
 
+.room-availability-section .eyebrow {
+  color: var(--gold-soft);
+}
+
 .room-availability-section .section-heading h2 {
-  color: #7a4d12;
-  font-size: clamp(2.8rem, 7vw, 5.2rem);
+  color: var(--gold-soft);
+  text-shadow: 0 10px 34px rgba(199, 155, 43, 0.2);
+  font-size: clamp(2.8rem, 7vw, 5.3rem);
 }
 
 .availability-grid {
@@ -1197,24 +1224,29 @@ body.is-lightbox-open {
 .availability-card {
   display: grid;
   gap: 18px;
-  min-height: 230px;
-  border: 1px solid rgba(255, 236, 139, 0.88);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 209, 0, 0.72));
+  min-height: 238px;
+  align-content: center;
+  border: 1px solid rgba(244, 223, 157, 0.38);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 220, 128, 0.09), rgba(255, 220, 128, 0.02)),
+    linear-gradient(180deg, rgba(38, 32, 21, 0.98), rgba(13, 12, 10, 0.98));
   padding: clamp(24px, 4vw, 38px);
-  box-shadow: 0 20px 45px rgba(106, 76, 8, 0.18);
+  box-shadow:
+    0 10px 14px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 233, 178, 0.12);
 }
 
 .availability-card h3 {
   margin: 0;
-  color: #71450c;
+  color: var(--gold-soft);
   text-align: center;
   font-size: clamp(1.5rem, 3vw, 2.2rem);
 }
 
 .availability-card p {
   margin: 0;
-  color: #71450c;
+  color: var(--white);
   text-align: center;
   font-size: clamp(1.12rem, 2vw, 1.55rem);
   font-weight: 900;
@@ -1222,9 +1254,11 @@ body.is-lightbox-open {
 
 .availability-bar {
   overflow: hidden;
-  height: 15px;
+  height: 14px;
+  border: 1px solid rgba(244, 223, 157, 0.22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.45);
 }
 
 .availability-bar span {
@@ -1232,14 +1266,15 @@ body.is-lightbox-open {
   width: 0;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #b98509, #f6c20f);
+  background: linear-gradient(90deg, #9f7616, #f6c955 54%, #ffdf7e);
+  box-shadow: 0 0 18px rgba(246, 201, 85, 0.34);
   transition: width 700ms ease;
 }
 
 .availability-status {
-  min-height: 22px;
+  min-height: 0;
   margin: 22px 0 0;
-  color: #71450c;
+  color: var(--gold-soft);
   text-align: center;
   font-weight: 900;
 }

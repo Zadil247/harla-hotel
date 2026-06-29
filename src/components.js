@@ -102,7 +102,6 @@ export function RoomAvailabilitySection() {
       <div class="section-heading reveal">
         <p class="eyebrow">Live Room Inventory</p>
         <h2 id="room-availability-title">Room Availability</h2>
-        <p>Availability updates from Harla Hotel's Supabase room inventory when bookings are confirmed.</p>
       </div>
       <div class="availability-grid" data-room-availability-grid>
         ${roomBookingTypes
@@ -119,7 +118,7 @@ export function RoomAvailabilitySection() {
           )
           .join("")}
       </div>
-      <p class="availability-status" data-room-availability-status role="status" aria-live="polite"></p>
+      <p class="availability-status" data-room-availability-status role="status" aria-live="polite" hidden></p>
       <div class="availability-actions reveal">
         <a class="btn btn-primary" href="./book-room.html">Book Now</a>
       </div>
