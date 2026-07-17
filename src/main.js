@@ -1,6 +1,6 @@
-import { App } from "./components.js?v=20260521-room-automation";
-import { siteConfig } from "./data.js?v=20260521-room-automation";
-import { initImageLightbox } from "./lightbox.js?v=20260521-room-automation";
+import { App } from "./components.js?v=20260702-booking-availability";
+import { siteConfig } from "./data.js?v=20260702-booking-availability";
+import { initImageLightbox } from "./lightbox.js?v=20260702-booking-availability";
 import {
   backendSetupMessage,
   createEventRequest,
@@ -9,7 +9,7 @@ import {
   getRoomInventory,
   isBackendReady,
   subscribeRoomInventory,
-} from "./supabase-api.js?v=20260521-room-automation";
+} from "./supabase-api.js?v=20260702-booking-availability";
 
 const app = document.querySelector("#app");
 app.innerHTML = App();
@@ -61,6 +61,11 @@ function roomAvailabilityPercent(room) {
   return Math.max(0, Math.min(100, (available / total) * 100));
 }
 
+function roomAvailabilityLabel(room) {
+  const percent = Math.round(roomAvailabilityPercent(room));
+  return percent > 0 ? `Availability: ${percent}%` : "Booking unavailable. Please contact us.";
+}
+
 function renderRoomAvailability(inventory) {
   document.querySelectorAll("[data-availability-card]").forEach((card) => {
     const room = inventory.find((item) => item.room_type === card.dataset.availabilityCard);
@@ -68,10 +73,11 @@ function renderRoomAvailability(inventory) {
       return;
     }
 
-    const available = Number(room.available_rooms || 0);
-    const total = Number(room.total_rooms || 0);
-    card.querySelector("[data-availability-text]").textContent = `Available: ${available} out of ${total}`;
-    card.querySelector("[data-availability-fill]").style.width = `${roomAvailabilityPercent(room)}%`;
+    const percent = roomAvailabilityPercent(room);
+    const contact = card.querySelector("[data-availability-contact]");
+    card.querySelector("[data-availability-text]").textContent = roomAvailabilityLabel(room);
+    card.querySelector("[data-availability-fill]").style.width = `${percent}%`;
+    contact?.toggleAttribute("hidden", Math.round(percent) > 0);
   });
 }
 
