@@ -8,8 +8,8 @@ import {
   services,
   siteConfig,
   whatsappLinks,
-} from "./data.js?v=20260521-room-automation";
-import { LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260521-room-automation";
+} from "./data.js?v=20260702-booking-availability";
+import { LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260702-booking-availability";
 
 const navLinks = [
   ["About", "./index.html#about", "about"],
@@ -97,6 +97,9 @@ export function RoomCard(room) {
 }
 
 export function RoomAvailabilitySection() {
+  const availabilityPercent = (room) =>
+    room.totalRooms ? Math.max(0, Math.min(100, Math.round((room.availableRooms / room.totalRooms) * 100))) : 0;
+
   return `
     <section class="section room-availability-section" id="room-availability" aria-labelledby="room-availability-title">
       <div class="section-heading reveal">
@@ -109,9 +112,17 @@ export function RoomAvailabilitySection() {
             (room) => `
               <article class="availability-card reveal" data-availability-card="${room.name}">
                 <h3>${room.name}</h3>
-                <p><span data-availability-text>Available: ${room.availableRooms} out of ${room.totalRooms}</span></p>
+                <p><span data-availability-text>${
+                  availabilityPercent(room) > 0
+                    ? `Availability: ${availabilityPercent(room)}%`
+                    : "Booking unavailable. Please contact us."
+                }</span></p>
                 <div class="availability-bar" aria-hidden="true">
-                  <span data-availability-fill style="width: ${(room.availableRooms / room.totalRooms) * 100}%"></span>
+                  <span data-availability-fill style="width: ${availabilityPercent(room)}%"></span>
+                </div>
+                <div class="availability-contact" data-availability-contact ${availabilityPercent(room) > 0 ? "hidden" : ""}>
+                  <a href="mailto:${siteConfig.email}">${siteConfig.email}</a>
+                  <a href="tel:${siteConfig.phone.replace(/\s/g, "")}">${siteConfig.phone}</a>
                 </div>
               </article>
             `,

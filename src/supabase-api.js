@@ -166,14 +166,29 @@ export async function createRoomBooking(payload) {
   ensureCheckoutAfterCheckin(checkIn, checkOut);
   const nights = payload.nights || Math.round((new Date(`${checkOut}T00:00:00`) - new Date(`${checkIn}T00:00:00`)) / 86_400_000);
   const bookingNumber = payload.bookingNumber || generateBookingNumber();
+  const roomType = requireText(payload.roomType || payload.roomName, "Room type");
 
   const supabase = await getSupabaseClient();
+  const { data: inventoryRoom, error: inventoryError } = await supabase
+    .from("room_inventory")
+    .select("available_rooms")
+    .eq("room_type", roomType)
+    .maybeSingle();
+
+  if (inventoryError) {
+    throw inventoryError;
+  }
+
+  if (!inventoryRoom || Number(inventoryRoom.available_rooms || 0) < 1) {
+    throw new Error(`${roomType} is no longer available. Please choose another room type or contact Harla Hotel.`);
+  }
+
   const { error } = await supabase.from("room_bookings").insert({
     booking_number: bookingNumber,
     full_name: requireText(payload.fullName, "Full name"),
     phone: requireText(payload.phone, "Phone number"),
     email: optionalText(payload.email),
-    room_type: requireText(payload.roomType || payload.roomName, "Room type"),
+    room_type: roomType,
     room_slug: optionalText(payload.roomSlug),
     room_name: optionalText(payload.roomName || payload.roomType),
     check_in: checkIn,
