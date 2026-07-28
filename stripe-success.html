@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Booking Confirmation | Harla Hotel</title>
+    <meta
+      name="description"
+      content="Review your Harla Hotel international card payment and room booking confirmation."
+    />
+    <link rel="stylesheet" href="./src/styles.css?v=20260727-stripe-checkout" />
+    <script type="module" src="./src/stripe-success.js?v=20260727-stripe-checkout"></script>
+  </head>
+  <body class="payment-result-page">
+    <main class="payment-result-main">
+      <section class="payment-result-shell" id="stripe-success-app" aria-live="polite">
+        <div class="payment-result-loading">
+          <span class="payment-loading-mark" aria-hidden="true"></span>
+          <p>Verifying your secure payment and room booking...</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

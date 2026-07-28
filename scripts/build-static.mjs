@@ -19,6 +19,8 @@ const rootFiles = [
   "restaurant-order.html",
   "restaurant.html",
   "room-booking.html",
+  "stripe-cancel.html",
+  "stripe-success.html",
 ];
 
 const directories = ["admin", "admin-login", "assets", "book-room", "public", "restaurant-order", "src"];

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Payment Cancelled | Harla Hotel</title>
+    <meta
+      name="description"
+      content="Return to Harla Hotel room booking after cancelling international card checkout."
+    />
+    <link rel="stylesheet" href="./src/styles.css?v=20260727-stripe-checkout" />
+    <script type="module" src="./src/stripe-cancel.js?v=20260727-stripe-checkout"></script>
+  </head>
+  <body class="payment-result-page">
+    <main class="payment-result-main">
+      <section class="payment-result-shell" id="stripe-cancel-app" aria-live="polite">
+        <div class="payment-result-loading">
+          <span class="payment-loading-mark" aria-hidden="true"></span>
+          <p>Closing the cancelled checkout safely...</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
