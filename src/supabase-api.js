@@ -369,10 +369,11 @@ export async function getRestaurantOrderStatus(orderNumber, phone) {
   return Array.isArray(data) ? data[0] || null : data;
 }
 
-export async function getRoomBookingStatus(bookingNumber) {
+export async function getRoomBookingStatus(bookingNumber, fullName) {
   const supabase = await getSupabaseClient();
-  const { data, error } = await supabase.rpc("get_room_booking_status", {
+  const { data, error } = await supabase.rpc("lookup_room_booking_status", {
     lookup_booking_number: requireText(bookingNumber, "Booking number"),
+    lookup_full_name: requireText(fullName, "Full name"),
   });
 
   if (error) {
