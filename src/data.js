@@ -1,3 +1,5 @@
+import { findRoomPricing } from "./room-pricing.js";
+
 export const siteConfig = {
   // REPLACE: Add your final logo text or switch this to an image in Navbar.
   brandName: "Harla Hotel",
@@ -14,6 +16,9 @@ export const siteConfig = {
   tiktok: "#",
   // REPLACE: Change this to your Odoo, CRM, or booking API endpoint.
   bookingEndpoint: "/api/booking-inquiry",
+  // REPLACE: Add verified international transfer instructions here when Harla Hotel's account is ready.
+  // Keep this empty until the hotel provides real bank, Wise, PayPal, or other transfer details.
+  internationalTransferInstructions: "",
   // REPLACE: Swap this placeholder with the real Odoo POS URL when Harla is ready to use it.
   odooPosUrl: "ODOO_POS_URL_PLACEHOLDER",
 };
@@ -76,7 +81,7 @@ export const roomBookingTypes = [
   {
     slug: "queen-size-bed-room",
     name: "Queen Size Bed Room",
-    pricePerNight: 4500,
+    pricePerNight: findRoomPricing("queen-size-bed-room").pricePerNightEtb,
     priceLabel: "4,500 ETB per night",
     totalRooms: 8,
     availableRooms: 8,
@@ -87,7 +92,7 @@ export const roomBookingTypes = [
   {
     slug: "twin-bed-room",
     name: "Twin Bed Room",
-    pricePerNight: 4500,
+    pricePerNight: findRoomPricing("twin-bed-room").pricePerNightEtb,
     priceLabel: "4,500 ETB per night",
     totalRooms: 2,
     availableRooms: 2,
@@ -98,7 +103,7 @@ export const roomBookingTypes = [
   {
     slug: "vip-room",
     name: "VIP Room",
-    pricePerNight: 7500,
+    pricePerNight: findRoomPricing("vip-room").pricePerNightEtb,
     priceLabel: "7,500 ETB per night",
     totalRooms: 1,
     availableRooms: 1,

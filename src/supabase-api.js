@@ -124,6 +124,56 @@ function generateBookingNumber() {
   return `HRB-${timestamp}${random}`;
 }
 
+function safeStorageSegment(value, fallback = "file") {
+  const segment = clean(value)
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 90);
+  return segment || fallback;
+}
+
+function safeStorageFileName(fileName) {
+  const cleaned = clean(fileName)
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return cleaned || "government-id";
+}
+
+function governmentIdMimeType(file) {
+  const extension = clean(file?.name).split(".").pop()?.toLowerCase();
+  const extensionTypes = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+  };
+  return file?.type || extensionTypes[extension] || "";
+}
+
+function validateGovernmentIdUpload(file) {
+  if (!file || !file.name) {
+    throw new Error("Government-issued ID upload is required.");
+  }
+
+  const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
+  const mimeType = governmentIdMimeType(file);
+  if (!allowedTypes.has(mimeType)) {
+    throw new Error("Government-issued ID must be a PDF, JPG, JPEG, or PNG file.");
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Government-issued ID must be 10 MB or smaller.");
+  }
+
+  return mimeType;
+}
+
+export function createBookingReference() {
+  return generateBookingNumber();
+}
+
 export async function getRoomInventory() {
   const supabase = await getSupabaseClient();
   const { data, error } = await supabase
@@ -186,8 +236,10 @@ export async function createRoomBooking(payload) {
   const { error } = await supabase.from("room_bookings").insert({
     booking_number: bookingNumber,
     full_name: requireText(payload.fullName, "Full name"),
-    phone: requireText(payload.phone, "Phone number"),
+    phone: requireText(payload.phoneInternational || payload.phone, "Phone number"),
     email: optionalText(payload.email),
+    date_of_birth: optionalText(payload.dateOfBirth),
+    nationality: optionalText(payload.nationality),
     room_type: roomType,
     room_slug: optionalText(payload.roomSlug),
     room_name: optionalText(payload.roomName || payload.roomType),
@@ -203,7 +255,17 @@ export async function createRoomBooking(payload) {
     number_of_rooms: numberOrNull(payload.numberOfRooms) || 1,
     price_per_night: numberOrNull(payload.pricePerNight),
     total_price: numberOrNull(payload.estimatedTotal || payload.totalPrice),
+    total_price_etb: numberOrNull(payload.estimatedTotal || payload.totalPrice),
+    total_price_usd: numberOrNull(payload.totalPriceUsd),
+    exchange_rate: numberOrNull(payload.exchangeRate),
+    exchange_rate_date: optionalText(payload.exchangeRateDate),
+    payment_currency: optionalText(payload.paymentCurrency) || "ETB",
     message: optionalText(payload.message),
+    government_id_path: optionalText(payload.governmentIdPath),
+    government_id_file_name: optionalText(payload.governmentIdFileName),
+    government_id_mime_type: optionalText(payload.governmentIdMimeType),
+    government_id_file_size: numberOrNull(payload.governmentIdFileSize),
+    government_id_uploaded_at: optionalText(payload.governmentIdUploadedAt),
   });
 
   if (error) {
@@ -307,10 +369,11 @@ export async function getRestaurantOrderStatus(orderNumber, phone) {
   return Array.isArray(data) ? data[0] || null : data;
 }
 
-export async function getRoomBookingStatus(bookingNumber) {
+export async function getRoomBookingStatus(bookingNumber, fullName) {
   const supabase = await getSupabaseClient();
-  const { data, error } = await supabase.rpc("get_room_booking_status", {
+  const { data, error } = await supabase.rpc("lookup_room_booking_status", {
     lookup_booking_number: requireText(bookingNumber, "Booking number"),
+    lookup_full_name: requireText(fullName, "Full name"),
   });
 
   if (error) {
@@ -347,6 +410,81 @@ export async function uploadPaymentScreenshot(file, folder = "restaurant-orders"
   }
 
   return path;
+}
+
+export async function uploadRoomPaymentProof(file, bookingReference) {
+  if (!file || !file.name) {
+    throw new Error("Payment confirmation file is required.");
+  }
+
+  const extension = clean(file.name).split(".").pop()?.toLowerCase();
+  const allowedTypes = new Set([
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]);
+  const extensionTypes = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+  };
+  const mimeType = file.type || extensionTypes[extension] || "";
+
+  if (!allowedTypes.has(mimeType) || !extensionTypes[extension]) {
+    throw new Error("Payment confirmation must be PDF, JPG, JPEG, PNG, or WebP.");
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Payment confirmation must be 10 MB or smaller.");
+  }
+
+  const bookingFolder = safeStorageSegment(bookingReference, "room-booking");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const fileName = safeStorageFileName(file.name);
+  const path = `room-bookings/${bookingFolder}/${timestamp}-${fileName}`;
+  const supabase = await getSupabaseClient();
+  const { error } = await supabase.storage
+    .from("payment-screenshots")
+    .upload(path, file, {
+      cacheControl: "3600",
+      contentType: mimeType,
+      upsert: false,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return path;
+}
+
+export async function uploadGovernmentId(file, bookingReference) {
+  const mimeType = validateGovernmentIdUpload(file);
+  const bookingFolder = safeStorageSegment(bookingReference, "room-booking");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const fileName = safeStorageFileName(file.name);
+  const path = `room-bookings/${bookingFolder}/${timestamp}-${fileName}`;
+  const supabase = await getSupabaseClient();
+
+  const { error } = await supabase.storage.from("guest-ids").upload(path, file, {
+    cacheControl: "3600",
+    contentType: mimeType,
+    upsert: false,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    path,
+    fileName: file.name,
+    mimeType,
+    fileSize: file.size,
+    uploadedAt: new Date().toISOString(),
+  };
 }
 
 export async function createEventRequest(payload) {

@@ -6,16 +6,16 @@
     <title>Room Booking Status | Harla Hotel</title>
     <meta
       name="description"
-      content="Check your Harla Hotel room booking status by booking number and download your confirmation PDF after approval."
+      content="Securely check your Harla Hotel room booking status using your full name and booking reference."
     />
     <link rel="stylesheet" href="./src/styles.css" />
     <!-- REPLACE: For the current static site, paste your Supabase URL and anon key here. For Vite, use .env instead. -->
     <script>
       window.HARLA_SUPABASE_CONFIG = { url: "", anonKey: "" };
     </script>
-    <script type="module" src="./src/booking-status.js?v=20260521-room-automation"></script>
+    <script type="module" src="./src/booking-status.js?v=20260728-secure-status-v2"></script>
   </head>
-  <body class="room-booking-page">
+  <body class="booking-status-page">
     <a class="skip-link" href="#booking-status-main">Skip to booking status</a>
     <div id="booking-status-app"></div>
   </body>
