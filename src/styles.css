@@ -2005,6 +2005,103 @@ body.is-lightbox-open {
   gap: 18px;
 }
 
+.payment-choice-stack {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.chapa-checkout-card {
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(219, 176, 77, 0.66);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(219, 176, 77, 0.16), transparent 54%),
+    #12110e;
+  box-shadow:
+    0 20px 44px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  padding: clamp(20px, 3vw, 28px);
+}
+
+.chapa-checkout-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.chapa-checkout-heading .eyebrow {
+  margin-bottom: 3px;
+}
+
+.chapa-checkout-heading h3 {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+}
+
+.chapa-secure-mark {
+  min-width: 68px;
+  border: 1px solid rgba(244, 223, 157, 0.48);
+  border-radius: 999px;
+  background: rgba(219, 176, 77, 0.12);
+  color: var(--gold-soft);
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.chapa-checkout-card > p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.chapa-checkout-total {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid rgba(244, 223, 157, 0.18);
+  border-bottom: 1px solid rgba(244, 223, 157, 0.18);
+  padding: 15px 0;
+}
+
+.chapa-checkout-total span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.chapa-checkout-total strong {
+  color: var(--gold-soft);
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+}
+
+.chapa-checkout-button {
+  width: 100%;
+}
+
+.chapa-checkout-card > small {
+  color: rgba(255, 255, 255, 0.58);
+  text-align: center;
+}
+
+.chapa-checkout-status {
+  min-height: 1.25rem;
+  margin: 0;
+  color: var(--gold-soft);
+  font-size: 0.88rem;
+  font-weight: 750;
+  text-align: center;
+}
+
 .international-payment-panel h3 {
   margin: 0;
   color: var(--gold-soft);
@@ -4290,6 +4387,21 @@ textarea {
   padding: 14px 16px;
 }
 
+.chapa-test-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 18px;
+  border: 1px solid rgba(244, 223, 157, 0.5);
+  border-radius: 999px;
+  background: rgba(219, 176, 77, 0.12);
+  color: var(--gold-soft);
+  padding: 8px 12px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
 .payment-result-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4323,6 +4435,12 @@ textarea {
 
   .payment-result-actions .btn {
     width: 100%;
+  }
+
+  .chapa-checkout-heading,
+  .chapa-checkout-total {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

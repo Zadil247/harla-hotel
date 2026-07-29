@@ -41,7 +41,7 @@ function nightsBetween(checkIn, checkOut) {
   return nights;
 }
 
-export function validateInternationalBooking(input) {
+function validateBooking(input, { allowEthiopian }) {
   const bookingNumber = requiredText(
     input.bookingNumber,
     "Booking reference",
@@ -82,7 +82,7 @@ export function validateInternationalBooking(input) {
     "Nationality country code",
     2,
   ).toUpperCase();
-  if (nationalityCountryCode === "ET") {
+  if (!allowEthiopian && nationalityCountryCode === "ET") {
     throw new PublicError(
       "Ethiopian guests must use CBE, Telebirr, or E-Birr.",
     );
@@ -149,4 +149,12 @@ export function validateInternationalBooking(input) {
       String(input.governmentIdUploadedAt || "").trim() ||
       new Date().toISOString(),
   };
+}
+
+export function validateInternationalBooking(input) {
+  return validateBooking(input, { allowEthiopian: false });
+}
+
+export function validateChapaBooking(input) {
+  return validateBooking(input, { allowEthiopian: true });
 }

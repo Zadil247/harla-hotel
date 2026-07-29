@@ -84,7 +84,7 @@ const state = {
   internationalQuote: null,
   internationalQuoteError: "",
   isQuoteLoading: false,
-  internationalBookingNumber: "",
+  chapaBookingNumber: "",
   governmentIdUpload: null,
   success: null,
   message: "",
@@ -686,6 +686,37 @@ function confirmationStep() {
   `;
 }
 
+function chapaPaymentOption() {
+  return `
+    <section class="chapa-checkout-card" aria-labelledby="chapa-checkout-title">
+      <div class="chapa-checkout-heading">
+        <span class="chapa-secure-mark" aria-hidden="true">Secure</span>
+        <div>
+          <p class="eyebrow">Primary Secure Payment</p>
+          <h3 id="chapa-checkout-title">Pay with Chapa Hosted Checkout</h3>
+        </div>
+      </div>
+      <p>
+        Continue to Chapa's secure hosted payment page. Harla Hotel will confirm the booking only after the server verifies the transaction directly with Chapa.
+      </p>
+      <div class="chapa-checkout-total">
+        <span>Amount charged by Chapa</span>
+        <strong>${formatEtb(currentTotal())}</strong>
+      </div>
+      <button
+        class="btn btn-primary chapa-checkout-button"
+        type="button"
+        data-start-chapa-checkout
+        ${state.isSubmitting ? "disabled" : ""}
+      >
+        ${state.isSubmitting ? "Opening Chapa Secure Checkout..." : "Pay Securely with Chapa"}
+      </button>
+      <p class="chapa-checkout-status" data-chapa-checkout-status role="status" aria-live="polite"></p>
+      <small>Prefer a manual payment? Use the verification form below as a fallback.</small>
+    </section>
+  `;
+}
+
 function paymentStep() {
   const room = selectedRoom();
   const isEthiopianGuest = nationalityIsEthiopian();
@@ -752,78 +783,81 @@ function paymentStep() {
             <h3>${escapeHtml(room?.name || "-")}</h3>
             ${summaryRows()}
           </aside>
-          <form class="booking-form premium-booking-form international-payment-panel" id="payment-form">
-            <div class="payment-route-badge">
-              <span aria-hidden="true">USD</span>
-              <div>
-                <strong>International Transfer — Manual Verification</strong>
-                <small>Your transfer proof will be checked by Harla Hotel before confirmation.</small>
+          <div class="payment-choice-stack">
+            ${chapaPaymentOption()}
+            <form class="booking-form premium-booking-form international-payment-panel" id="payment-form">
+              <div class="payment-route-badge">
+                <span aria-hidden="true">USD</span>
+                <div>
+                  <strong>International Transfer — Manual Verification</strong>
+                  <small>Your transfer proof will be checked by Harla Hotel before confirmation.</small>
+                </div>
               </div>
-            </div>
-            <div class="international-activation-notice">
-              <strong>International online card payment is being activated.</strong>
-              <p>For now, please complete the transfer using the payment instructions below and upload your payment confirmation.</p>
-            </div>
-            ${quoteStatus}
-            <section class="international-transfer-instructions" aria-labelledby="international-transfer-instructions-title">
-              <p class="eyebrow">Transfer Instructions</p>
-              <h3 id="international-transfer-instructions-title">Receive current payment details</h3>
-              ${
-                hasTransferInstructions
-                  ? `<p>${escapeHtml(siteConfig.internationalTransferInstructions)}</p>`
-                  : `
-                    <p>Please contact Harla Hotel to receive the current international transfer details.</p>
-                    <div class="international-transfer-contacts">
-                      <a href="mailto:${siteConfig.email}">${siteConfig.email}</a>
-                      <a href="tel:${siteConfig.phone.replace(/\s/g, "")}">${siteConfig.phone}</a>
-                    </div>
-                  `
-              }
-            </section>
-            <input name="paymentMethod" type="hidden" value="${internationalTransferMethod}" />
-            <div class="form-grid international-transfer-form-grid">
-              <label>
-                Transaction or transfer reference number
-                <input name="paymentReference" type="text" value="${escapeHtml(state.payment.paymentReference || "")}" placeholder="Transfer/reference ID" required />
-              </label>
-              <label>
-                Sender/account name <span class="optional-field">Optional</span>
-                <input name="senderName" type="text" placeholder="Name shown on the transfer" maxlength="160" />
-              </label>
-              <label>
-                Payment date
-                <input name="paymentDate" type="date" max="${todayIso()}" value="${todayIso()}" required />
-              </label>
-              <label>
-                Amount transferred in USD
-                <input name="amountTransferredUsd" type="number" min="0.01" step="0.01" value="${quote ? Number(quote.totalUsd).toFixed(2) : ""}" placeholder="0.00" required />
-              </label>
-              <label class="form-wide payment-proof-field">
-                Payment confirmation screenshot or PDF
-                <span class="payment-proof-control">
-                  <input name="paymentProof" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required />
-                  <span>
-                    <strong>Choose transfer confirmation</strong>
-                    <small data-payment-proof-file>PDF, JPG, PNG, or WebP. Maximum 10 MB.</small>
+              <div class="international-activation-notice">
+                <strong>Manual international transfer fallback</strong>
+                <p>If you cannot use Chapa, complete the transfer using the instructions below and upload your payment confirmation.</p>
+              </div>
+              ${quoteStatus}
+              <section class="international-transfer-instructions" aria-labelledby="international-transfer-instructions-title">
+                <p class="eyebrow">Transfer Instructions</p>
+                <h3 id="international-transfer-instructions-title">Receive current payment details</h3>
+                ${
+                  hasTransferInstructions
+                    ? `<p>${escapeHtml(siteConfig.internationalTransferInstructions)}</p>`
+                    : `
+                      <p>Please contact Harla Hotel to receive the current international transfer details.</p>
+                      <div class="international-transfer-contacts">
+                        <a href="mailto:${siteConfig.email}">${siteConfig.email}</a>
+                        <a href="tel:${siteConfig.phone.replace(/\s/g, "")}">${siteConfig.phone}</a>
+                      </div>
+                    `
+                }
+              </section>
+              <input name="paymentMethod" type="hidden" value="${internationalTransferMethod}" />
+              <div class="form-grid international-transfer-form-grid">
+                <label>
+                  Transaction or transfer reference number
+                  <input name="paymentReference" type="text" value="${escapeHtml(state.payment.paymentReference || "")}" placeholder="Transfer/reference ID" required />
+                </label>
+                <label>
+                  Sender/account name <span class="optional-field">Optional</span>
+                  <input name="senderName" type="text" placeholder="Name shown on the transfer" maxlength="160" />
+                </label>
+                <label>
+                  Payment date
+                  <input name="paymentDate" type="date" max="${todayIso()}" value="${todayIso()}" required />
+                </label>
+                <label>
+                  Amount transferred in USD
+                  <input name="amountTransferredUsd" type="number" min="0.01" step="0.01" value="${quote ? Number(quote.totalUsd).toFixed(2) : ""}" placeholder="0.00" required />
+                </label>
+                <label class="form-wide payment-proof-field">
+                  Payment confirmation screenshot or PDF
+                  <span class="payment-proof-control">
+                    <input name="paymentProof" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required />
+                    <span>
+                      <strong>Choose transfer confirmation</strong>
+                      <small data-payment-proof-file>PDF, JPG, PNG, or WebP. Maximum 10 MB.</small>
+                    </span>
                   </span>
-                </span>
-              </label>
-            </div>
-            <div class="payment-review-note">
-              Your booking and transfer proof will be saved as Pending Payment Confirmation. It is not paid or confirmed until an authorized Harla Hotel admin approves it.
-            </div>
-            <div class="room-booking-actions">
-              <button class="btn btn-light" type="button" data-back-to-confirm>Back to Confirmation</button>
-              <button
-                class="btn btn-primary"
-                type="submit"
-                ${!quote || state.isQuoteLoading || state.isSubmitting ? "disabled" : ""}
-              >
-                ${state.isSubmitting ? "Submitting for Verification..." : "Submit Transfer for Verification"}
-              </button>
-            </div>
-            <p class="form-status" role="status" aria-live="polite"></p>
-          </form>
+                </label>
+              </div>
+              <div class="payment-review-note">
+                Your booking and transfer proof will be saved as Pending Payment Confirmation. It is not paid or confirmed until an authorized Harla Hotel admin approves it.
+              </div>
+              <div class="room-booking-actions">
+                <button class="btn btn-light" type="button" data-back-to-confirm>Back to Confirmation</button>
+                <button
+                  class="btn btn-primary"
+                  type="submit"
+                  ${!quote || state.isQuoteLoading || state.isSubmitting ? "disabled" : ""}
+                >
+                  ${state.isSubmitting ? "Submitting for Verification..." : "Submit Transfer for Verification"}
+                </button>
+              </div>
+              <p class="form-status" role="status" aria-live="polite"></p>
+            </form>
+          </div>
         </div>
       </section>
     `;
@@ -842,50 +876,53 @@ function paymentStep() {
           <h3>${escapeHtml(room?.name || "-")}</h3>
           ${summaryRows()}
         </aside>
-        <form class="booking-form premium-booking-form" id="payment-form">
-          <div class="form-grid">
-            <label class="form-wide">
-              Payment method
-              <select name="paymentMethod" id="room-payment-method" required>
-                <option value="">Choose payment method</option>
-                <option ${method === "CBE" ? "selected" : ""}>CBE</option>
-                <option ${method === "Telebirr" ? "selected" : ""}>Telebirr</option>
-                <option value="E-Birr" ${method === "E-Birr" ? "selected" : ""}>eBirr</option>
-              </select>
-            </label>
-            <div class="payment-instructions room-payment-instructions form-wide" data-payment-instructions>
-              ${escapeHtml(paymentInstructions(method))}
-            </div>
-            <label>
-              Payment reference number
-              <input name="paymentReference" type="text" value="${escapeHtml(state.payment.paymentReference || "")}" placeholder="Transaction/reference ID" required />
-            </label>
-            <label class="payment-proof-field">
-              Payment screenshot/proof
-              <span class="payment-proof-control">
-                <input name="paymentProof" type="file" accept="image/jpeg,image/png,image/webp" required />
-                <span>
-                  <strong>Choose payment proof</strong>
-                  <small data-payment-proof-file>JPG, PNG, or WebP. Maximum 10 MB.</small>
+        <div class="payment-choice-stack">
+          ${chapaPaymentOption()}
+          <form class="booking-form premium-booking-form" id="payment-form">
+            <div class="form-grid">
+              <label class="form-wide">
+                Manual payment method
+                <select name="paymentMethod" id="room-payment-method" required>
+                  <option value="">Choose payment method</option>
+                  <option ${method === "CBE" ? "selected" : ""}>CBE</option>
+                  <option ${method === "Telebirr" ? "selected" : ""}>Telebirr</option>
+                  <option value="E-Birr" ${method === "E-Birr" ? "selected" : ""}>eBirr</option>
+                </select>
+              </label>
+              <div class="payment-instructions room-payment-instructions form-wide" data-payment-instructions>
+                ${escapeHtml(paymentInstructions(method))}
+              </div>
+              <label>
+                Payment reference number
+                <input name="paymentReference" type="text" value="${escapeHtml(state.payment.paymentReference || "")}" placeholder="Transaction/reference ID" required />
+              </label>
+              <label class="payment-proof-field">
+                Payment screenshot/proof
+                <span class="payment-proof-control">
+                  <input name="paymentProof" type="file" accept="image/jpeg,image/png,image/webp" required />
+                  <span>
+                    <strong>Choose payment proof</strong>
+                    <small data-payment-proof-file>JPG, PNG, or WebP. Maximum 10 MB.</small>
+                  </span>
                 </span>
-              </span>
-            </label>
-          </div>
-          <div class="payment-review-note">
-            ${
-              isLocalPayment
-                ? "Your booking will remain Pending Payment Confirmation until Harla Hotel checks and approves your payment proof."
-                : "Choose a local payment method to view the hotel account details and proof requirements."
-            }
-          </div>
-          <div class="room-booking-actions">
-            <button class="btn btn-light" type="button" data-back-to-confirm>Back to Confirmation</button>
-            <button class="btn btn-primary" type="submit" ${state.isSubmitting ? "disabled" : ""}>
-              ${state.isSubmitting ? "Submitting..." : "Submit Booking Request"}
-            </button>
-          </div>
-          <p class="form-status" role="status" aria-live="polite"></p>
-        </form>
+              </label>
+            </div>
+            <div class="payment-review-note">
+              ${
+                isLocalPayment
+                  ? "Your booking will remain Pending Payment Confirmation until Harla Hotel checks and approves your payment proof."
+                  : "Choose a manual payment method to view the hotel account details and proof requirements."
+              }
+            </div>
+            <div class="room-booking-actions">
+              <button class="btn btn-light" type="button" data-back-to-confirm>Back to Confirmation</button>
+              <button class="btn btn-primary" type="submit" ${state.isSubmitting ? "disabled" : ""}>
+                ${state.isSubmitting ? "Submitting..." : "Submit Booking Request"}
+              </button>
+            </div>
+            <p class="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
       </div>
     </section>
   `;
@@ -1265,7 +1302,7 @@ async function handleDetailsSubmit(event) {
     };
     state.internationalQuote = null;
     state.internationalQuoteError = "";
-    state.internationalBookingNumber = "";
+    state.chapaBookingNumber = "";
     state.governmentIdUpload = null;
     state.step = "confirm";
     state.message = "";
@@ -1355,7 +1392,9 @@ async function loadInternationalQuote() {
       `The USD conversion service is temporarily unavailable. Please contact ${siteConfig.phone}.`;
   } finally {
     state.isQuoteLoading = false;
-    render();
+    if (!state.isSubmitting) {
+      render();
+    }
   }
 }
 
@@ -1379,19 +1418,21 @@ async function ensureGovernmentIdUploaded(bookingNumber, status) {
   return state.governmentIdUpload;
 }
 
-async function startInternationalCheckout() {
-  if (state.isSubmitting || nationalityIsEthiopian()) {
+async function startChapaCheckout() {
+  if (state.isSubmitting) {
     return;
   }
 
-  const status = document.querySelector(".form-status");
-  const button = document.querySelector("[data-start-stripe-checkout]");
+  const status = document.querySelector("[data-chapa-checkout-status]");
+  const button = document.querySelector("[data-start-chapa-checkout]");
+  let checkoutError = "";
+  let isRedirecting = false;
 
   try {
     state.isSubmitting = true;
     if (button) {
       button.disabled = true;
-      button.textContent = "Opening Secure Checkout...";
+      button.textContent = "Opening Chapa Secure Checkout...";
     }
     status.textContent = "Checking live room availability...";
     await refreshInventory();
@@ -1405,13 +1446,12 @@ async function startInternationalCheckout() {
       return;
     }
 
-    const bookingNumber =
-      state.internationalBookingNumber || createBookingReference();
-    state.internationalBookingNumber = bookingNumber;
+    const bookingNumber = state.chapaBookingNumber || createBookingReference();
+    state.chapaBookingNumber = bookingNumber;
     const governmentId = await ensureGovernmentIdUploaded(bookingNumber, status);
 
-    status.textContent = "Creating your secure Stripe Checkout session...";
-    const checkout = await paymentApiJson("/api/create-checkout-session", {
+    status.textContent = "Creating your secure Chapa hosted checkout...";
+    const checkout = await paymentApiJson("/api/chapa-initialize", {
       method: "POST",
       body: JSON.stringify({
         ...state.details,
@@ -1431,23 +1471,29 @@ async function startInternationalCheckout() {
     if (
       checkoutUrl.protocol !== "https:" ||
       !(
-        checkoutUrl.hostname === "checkout.stripe.com" ||
-        checkoutUrl.hostname.endsWith(".stripe.com")
+        checkoutUrl.hostname === "chapa.co" ||
+        checkoutUrl.hostname.endsWith(".chapa.co")
       )
     ) {
-      throw new Error("The secure checkout URL could not be verified.");
+      throw new Error("The Chapa secure checkout URL could not be verified.");
     }
 
+    isRedirecting = true;
     window.location.assign(checkoutUrl.href);
   } catch (error) {
-    status.textContent =
+    checkoutError =
       error.message ||
-      "Secure card checkout could not be opened. Please try again or contact Harla Hotel.";
+      "Chapa secure checkout could not be opened. Please try again or use a manual payment option.";
   } finally {
     state.isSubmitting = false;
-    if (button && document.contains(button)) {
-      button.disabled = !state.internationalQuote;
-      button.textContent = "Continue to Secure Checkout";
+    if (!isRedirecting) {
+      render();
+      const currentStatus = document.querySelector(
+        "[data-chapa-checkout-status]",
+      );
+      if (currentStatus) {
+        currentStatus.textContent = checkoutError;
+      }
     }
   }
 }
@@ -1853,6 +1899,9 @@ function bindPageEvents() {
   document.querySelector("[data-confirm-price]")?.addEventListener("click", confirmPrice);
   document.querySelector("#guest-details-form")?.addEventListener("submit", handleDetailsSubmit);
   document.querySelector("#payment-form")?.addEventListener("submit", handlePaymentSubmit);
+  document
+    .querySelector("[data-start-chapa-checkout]")
+    ?.addEventListener("click", startChapaCheckout);
   document
     .querySelector("[data-retry-international-quote]")
     ?.addEventListener("click", loadInternationalQuote);

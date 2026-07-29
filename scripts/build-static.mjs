@@ -11,6 +11,7 @@ const rootFiles = [
   "approved-orders.html",
   "book-room.html",
   "booking-status.html",
+  "chapa-success.html",
   "event-booking.html",
   "event-hall.html",
   "index.html",
