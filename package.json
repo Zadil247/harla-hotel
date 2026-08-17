@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.8",
+    "pdf-lib": "1.17.1",
+    "sharp": "0.35.3",
     "stripe": "22.3.2"
   }
 }

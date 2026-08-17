@@ -12,6 +12,7 @@ const rootFiles = [
   "book-room.html",
   "booking-status.html",
   "event-booking.html",
+  "event-booking-detail.html",
   "event-hall.html",
   "index.html",
   "order-status.html",

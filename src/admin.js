@@ -1,19 +1,41 @@
-import { Navbar } from "./components.js?v=20260521-room-automation";
-import { images, siteConfig } from "./data.js?v=20260521-room-automation";
+import { Navbar } from "./components.js?v=20260815-event-hall-v1";
+import { images, siteConfig } from "./data.js?v=20260815-event-hall-v1";
 import {
   backendSetupMessage,
+  createEventHallBooking,
+  generateEventHallOfficialConfirmation,
   getAdminDashboardData,
   isBackendReady,
   markRoomBookingContacted,
   markRestaurantOrderEnteredInOdoo,
   requireAdminAccess,
   signOutAdmin,
+  sendEventHallConfirmationEmail,
+  updateEventHallBookingStatus,
   updateRoomBookingStatus,
   updateRoomInventory,
   updateRequestStatus,
   updateRestaurantOrderStatus,
   updateRestaurantSettings,
-} from "./supabase-api.js?v=20260521-room-automation";
+  uploadEventHallPaymentProof,
+} from "./supabase-api.js?v=20260815-event-hall-v1";
+import {
+  collectEventBookingForm,
+  createEventSubmissionToken,
+  displayEventType,
+  eventBookingFormMarkup,
+  eventBookingSummaryMarkup,
+  eventPaymentNeedsProof,
+  formatEventDate,
+  formatEventTime,
+  normalizeEventServices,
+  validateEventBooking,
+  wireEventBookingForm,
+} from "./event-booking-core.js?v=20260815-event-hall-v1";
+import {
+  downloadEventHallConfirmationPdf,
+  openPrintableEventHallConfirmation,
+} from "./event-confirmation-pdf.js?v=20260815-event-hall-v1";
 
 const app = document.querySelector("#admin-app");
 const authTimeoutMs = 18000;
@@ -23,6 +45,10 @@ const defaultRestaurantSettings = {
   custom_message: "",
 };
 let latestRoomBookings = [];
+let latestEventHallBookings = [];
+let latestEventHalls = [];
+let adminEventDraft = null;
+let adminNotice = "";
 
 const requestSections = [
   {
@@ -298,6 +324,142 @@ function roomBookingsSection(bookings = [], inventory = []) {
         </div>
         <div class="admin-order-grid">
           ${declined.length ? declined.map((booking) => roomBookingCard(booking, "declined")).join("") : `<p class="empty-state">No declined room bookings.</p>`}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function eventServiceList(value) {
+  const services = normalizeEventServices(value);
+  if (!services.length) {
+    return "-";
+  }
+
+  return `
+    <ul class="admin-line-list">
+      ${services.map((service) => `
+        <li>
+          ${escapeHtml(service.name)}
+          ${service.quantity ? `: ${escapeHtml(service.quantity)} ${escapeHtml(String(service.quantityLabel || "quantity").toLowerCase())}` : ""}
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+
+function eventDocumentLink(booking, type) {
+  const isPdf = type === "pdf";
+  const url = isPdf
+    ? booking.confirmation_pdf_display_url
+    : booking.payment_screenshot_display_url;
+  const storedPath = isPdf
+    ? booking.confirmation_pdf_path
+    : booking.payment_screenshot_path;
+
+  if (!url && !storedPath) {
+    return "-";
+  }
+  if (!url) {
+    return `<span>Stored securely</span>`;
+  }
+
+  return `
+    <a class="admin-document-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">
+      ${isPdf ? "Open stored PDF" : "Open payment proof"}
+    </a>
+  `;
+}
+
+function eventHallBookingCard(booking) {
+  const searchText = [
+    booking.booking_reference,
+    booking.client_full_name,
+    booking.organization,
+    booking.hall_name,
+    booking.event_type,
+    booking.phone,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  return `
+    <article class="admin-order-card admin-event-booking-card" data-event-booking-card data-search-text="${escapeHtml(searchText)}">
+      <div class="admin-order-card-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(booking.booking_reference)}</p>
+          <h3>${escapeHtml(booking.client_full_name)}</h3>
+          <small>${escapeHtml(booking.organization || "Private client")}</small>
+        </div>
+        ${statusPill(booking.status)}
+      </div>
+      <dl class="admin-order-details">
+        <div><dt>Source</dt><dd>${escapeHtml(booking.booking_source)}</dd></div>
+        <div><dt>Phone</dt><dd>${escapeHtml(booking.phone)}</dd></div>
+        <div><dt>Email</dt><dd>${escapeHtml(booking.email || "-")}</dd></div>
+        <div><dt>Hall</dt><dd>${escapeHtml(booking.hall_name)}</dd></div>
+        <div><dt>Event</dt><dd>${escapeHtml(displayEventType(booking))}</dd></div>
+        <div><dt>Date</dt><dd>${escapeHtml(formatEventDate(booking.event_date))}</dd></div>
+        <div><dt>Time</dt><dd>${escapeHtml(formatEventTime(booking.start_time))} to ${escapeHtml(formatEventTime(booking.end_time))}</dd></div>
+        <div><dt>Attendees</dt><dd>${escapeHtml(booking.attendees)}</dd></div>
+        <div><dt>Services</dt><dd>${eventServiceList(booking.refreshments_services)}</dd></div>
+        <div><dt>Payment</dt><dd>${escapeHtml(booking.payment_method)}</dd></div>
+        <div><dt>Payment status</dt><dd>${escapeHtml(booking.payment_status)}</dd></div>
+        <div><dt>Payment proof</dt><dd>${eventDocumentLink(booking, "proof")}</dd></div>
+        <div><dt>Confirmation PDF</dt><dd>${eventDocumentLink(booking, "pdf")}</dd></div>
+        <div><dt>Email</dt><dd>${escapeHtml(booking.email_status || "not_requested")}</dd></div>
+      </dl>
+      <div class="admin-actions">
+        <a class="status-action" href="./event-booking-detail.html?id=${encodeURIComponent(booking.id)}">View Details</a>
+        <button class="status-action" type="button" data-event-booking-print="${booking.id}">Print Confirmation</button>
+        <button class="status-action" type="button" data-event-booking-download="${booking.id}">Download PDF</button>
+        ${booking.status === "pending" ? `
+          <button class="status-action" type="button" data-event-booking-status="confirmed" data-event-booking-id="${booking.id}">Confirm</button>
+        ` : ""}
+        ${booking.status === "confirmed" ? `
+          <button class="status-action" type="button" data-event-booking-status="completed" data-event-booking-id="${booking.id}">Mark Completed</button>
+        ` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function eventHallBookingsSection(bookings = [], halls = []) {
+  const sorted = [...bookings].sort((left, right) => {
+    const priority = { pending: 0, confirmed: 1, completed: 2, cancelled: 3 };
+    return (priority[left.status] ?? 9) - (priority[right.status] ?? 9)
+      || String(left.event_date).localeCompare(String(right.event_date));
+  });
+
+  return `
+    <section class="admin-event-bookings" id="event-hall-bookings">
+      <section class="admin-card admin-event-create-card">
+        <div class="admin-panel-heading compact-heading">
+          <div>
+            <p class="eyebrow">Phone and Walk-in Requests</p>
+            <h2>Create Event Hall Booking</h2>
+          </div>
+          <button class="btn btn-primary" type="button" data-toggle-admin-event-form>New Hall Booking</button>
+        </div>
+        <div class="admin-event-form-wrap" data-admin-event-form-wrap hidden>
+          ${eventBookingFormMarkup({ halls, mode: "admin" })}
+          <div data-admin-event-review></div>
+        </div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="admin-panel-heading admin-event-heading">
+          <div>
+            <p class="eyebrow">Event Hall Bookings</p>
+            <h2>Reservations and Requests</h2>
+          </div>
+          <span>${bookings.length} total</span>
+        </div>
+        <label class="admin-event-search">
+          <span>Search hall bookings</span>
+          <input type="search" placeholder="Reference, client, organization, hall, or phone" data-event-booking-search />
+        </label>
+        <p class="empty-state" data-event-search-empty hidden>No event hall bookings match this search.</p>
+        <div class="admin-order-grid admin-event-booking-grid">
+          ${sorted.length ? sorted.map(eventHallBookingCard).join("") : `<p class="empty-state">No event hall bookings yet.</p>`}
         </div>
       </section>
     </section>
@@ -598,9 +760,12 @@ async function renderDashboard(adminProfile) {
     );
     const restaurantOrders = data.restaurantOrders || [];
     latestRoomBookings = data.roomBookings || [];
+    latestEventHallBookings = data.eventHallBookings || [];
+    latestEventHalls = data.eventHalls || [];
     const restaurantSettings = data.restaurantSettings || defaultRestaurantSettings;
     const totalPending =
       latestRoomBookings.filter((item) => item.status === "pending").length +
+      latestEventHallBookings.filter((item) => item.status === "pending").length +
       restaurantOrders.filter((item) => item.status === "pending").length +
       requestSections.reduce(
         (total, section) =>
@@ -620,6 +785,8 @@ async function renderDashboard(adminProfile) {
         <button class="btn btn-primary" type="button" id="admin-sign-out">Sign Out</button>
       </section>
       ${dashboardWarnings(data.dashboardErrors || [])}
+      ${adminNotice ? `<section class="admin-card admin-notice" role="status"><p>${escapeHtml(adminNotice)}</p></section>` : ""}
+      ${eventHallBookingsSection(latestEventHallBookings, latestEventHalls)}
       ${roomBookingsSection(latestRoomBookings, data.roomInventory || [])}
       ${restaurantOrdersSection(restaurantOrders, restaurantSettings)}
       <div class="admin-grid">
@@ -628,6 +795,7 @@ async function renderDashboard(adminProfile) {
       <p class="admin-status" role="status" aria-live="polite"></p>
     `);
 
+    adminNotice = "";
     bindAdminActions(adminProfile);
   } catch (error) {
     dashboardShell(`
@@ -647,11 +815,228 @@ async function renderDashboard(adminProfile) {
   }
 }
 
+function eventBookingById(id) {
+  return latestEventHallBookings.find((booking) => booking.id === id) || null;
+}
+
+async function ensureAdminEventConfirmation(booking, options = {}) {
+  const confirmation = await generateEventHallOfficialConfirmation(booking, "", options);
+  booking.confirmation_pdf_display_url = confirmation.signedUrl;
+  return confirmation;
+}
+
+async function createAdminEventBooking(adminProfile, statusElement) {
+  if (!adminEventDraft) {
+    return;
+  }
+
+  const { payload, submissionToken } = adminEventDraft;
+  const preparedPrintWindow = window.open("", "_blank");
+  if (preparedPrintWindow) {
+    preparedPrintWindow.document.write("<title>Preparing Harla Hotel confirmation</title><p>Preparing the official confirmation letter...</p>");
+  }
+
+  try {
+    statusElement.textContent = "Saving the admin event hall booking...";
+    let paymentScreenshotPath = "";
+    if (eventPaymentNeedsProof(payload.paymentMethod) && payload.paymentProof?.name) {
+      statusElement.textContent = "Uploading the payment confirmation...";
+      paymentScreenshotPath = await uploadEventHallPaymentProof(payload.paymentProof, submissionToken);
+    }
+
+    const booking = await createEventHallBooking({
+      ...payload,
+      submissionToken,
+      paymentScreenshotPath,
+    });
+    const completeBooking = {
+      ...booking,
+      hall_id: payload.hallId,
+      address: payload.address,
+      booking_source: "ADMIN",
+      payment_reference: payload.paymentReference,
+      payment_screenshot_path: paymentScreenshotPath,
+      refreshments_services: payload.refreshmentsServices,
+      special_requests: payload.specialRequests,
+    };
+
+    let pdfStored = false;
+    let pdfOpened = false;
+    try {
+      statusElement.textContent = "Generating and storing the official confirmation letter...";
+      await ensureAdminEventConfirmation(completeBooking, { regenerate: true });
+      pdfStored = true;
+      await openPrintableEventHallConfirmation(completeBooking, preparedPrintWindow);
+      pdfOpened = true;
+    } catch (error) {
+      preparedPrintWindow?.close();
+      console.error("Admin event confirmation PDF failed", error);
+    }
+
+    let emailNote = "No email address was supplied.";
+    if (completeBooking.email) {
+      try {
+        const result = await sendEventHallConfirmationEmail(completeBooking, { resend: true });
+        emailNote = result.sent ? "Confirmation email sent." : "Confirmation email was not sent.";
+      } catch (error) {
+        emailNote = error.message || "Confirmation email could not be sent.";
+      }
+    }
+
+    const pdfNote = pdfStored
+      ? "The confirmation PDF was stored and opened for printing."
+      : pdfOpened
+        ? "The confirmation PDF opened for printing but could not be stored; it can be regenerated from this dashboard."
+        : "The booking is saved, but its PDF must be regenerated.";
+    adminNotice = `Hall booking ${booking.booking_reference} created successfully. ${pdfNote} ${emailNote}`;
+    adminEventDraft = null;
+    await renderDashboard(adminProfile);
+  } catch (error) {
+    preparedPrintWindow?.close();
+    statusElement.textContent = error.message || "The event hall booking could not be created.";
+  }
+}
+
+function bindAdminEventForm(adminProfile) {
+  const toggle = document.querySelector("[data-toggle-admin-event-form]");
+  const wrap = document.querySelector("[data-admin-event-form-wrap]");
+  const form = wrap?.querySelector("[data-event-reservation-form]");
+  const review = wrap?.querySelector("[data-admin-event-review]");
+
+  if (!toggle || !wrap || !form || !review) {
+    return;
+  }
+
+  wireEventBookingForm(form);
+  toggle.addEventListener("click", () => {
+    wrap.hidden = !wrap.hidden;
+    toggle.textContent = wrap.hidden ? "New Hall Booking" : "Close Booking Form";
+    if (!wrap.hidden) {
+      form.querySelector("input")?.focus();
+    }
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const payload = collectEventBookingForm(form);
+    const error = validateEventBooking(payload, latestEventHalls, {
+      existingPaymentProof: Boolean(payload.paymentProof?.name),
+    });
+    const status = form.querySelector(".form-status");
+    if (error) {
+      status.textContent = error;
+      return;
+    }
+
+    adminEventDraft = {
+      payload,
+      submissionToken: createEventSubmissionToken(),
+    };
+    const hall = latestEventHalls.find((item) => String(item.id) === String(payload.hallId));
+    review.innerHTML = eventBookingSummaryMarkup(payload, hall);
+    form.hidden = true;
+    review.querySelector("[data-edit-event-booking]")?.addEventListener("click", () => {
+      review.innerHTML = "";
+      form.hidden = false;
+      form.querySelector("input")?.focus();
+    });
+    review.querySelector("[data-confirm-event-booking]")?.addEventListener("click", async (confirmEvent) => {
+      const button = confirmEvent.currentTarget;
+      const reviewStatus = review.querySelector(".form-status");
+      button.disabled = true;
+      button.textContent = "Creating Booking...";
+      await createAdminEventBooking(adminProfile, reviewStatus);
+      if (document.contains(button)) {
+        button.disabled = false;
+        button.textContent = "Confirm Reservation";
+      }
+    });
+    review.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function bindAdminActions(adminProfile) {
   document.querySelector("#admin-refresh")?.addEventListener("click", () => renderDashboard(adminProfile));
   document.querySelector("#admin-sign-out")?.addEventListener("click", async () => {
     await signOutAdmin();
     redirectToLogin("signed-out");
+  });
+
+  bindAdminEventForm(adminProfile);
+
+  document.querySelector("[data-event-booking-search]")?.addEventListener("input", (event) => {
+    const query = event.currentTarget.value.trim().toLowerCase();
+    let visible = 0;
+    document.querySelectorAll("[data-event-booking-card]").forEach((card) => {
+      const matches = !query || card.dataset.searchText.includes(query);
+      card.hidden = !matches;
+      visible += matches ? 1 : 0;
+    });
+    const empty = document.querySelector("[data-event-search-empty]");
+    if (empty) {
+      empty.hidden = visible > 0;
+    }
+  });
+
+  document.querySelectorAll("[data-event-booking-print]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const status = document.querySelector(".admin-status");
+      const booking = eventBookingById(button.dataset.eventBookingPrint);
+      if (!booking) {
+        return;
+      }
+      const preparedWindow = window.open("", "_blank");
+      try {
+        status.textContent = "Opening the event hall confirmation for printing...";
+        await ensureAdminEventConfirmation(booking);
+        await openPrintableEventHallConfirmation(booking, preparedWindow);
+        status.textContent = "Confirmation letter opened for printing.";
+      } catch (error) {
+        preparedWindow?.close();
+        status.textContent = error.message || "Could not open the confirmation letter.";
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-event-booking-download]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const status = document.querySelector(".admin-status");
+      const booking = eventBookingById(button.dataset.eventBookingDownload);
+      if (!booking) {
+        return;
+      }
+      try {
+        status.textContent = "Preparing the secure event hall confirmation PDF...";
+        await ensureAdminEventConfirmation(booking);
+        await downloadEventHallConfirmationPdf(booking);
+        status.textContent = "Confirmation PDF downloaded.";
+      } catch (error) {
+        status.textContent = error.message || "Could not generate the confirmation PDF.";
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-event-booking-status]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const status = document.querySelector(".admin-status");
+      const booking = eventBookingById(button.dataset.eventBookingId);
+      if (!booking) {
+        return;
+      }
+      const nextStatus = button.dataset.eventBookingStatus;
+      try {
+        status.textContent = "Updating event hall booking status...";
+        await updateEventHallBookingStatus(
+          booking.id,
+          nextStatus,
+          booking.payment_status,
+          "",
+        );
+        await renderDashboard(adminProfile);
+      } catch (error) {
+        status.textContent = error.message || "Could not update this event hall booking.";
+      }
+    });
   });
 
   document.querySelectorAll("[data-room-booking-status]").forEach((button) => {
