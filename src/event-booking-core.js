@@ -1,4 +1,4 @@
-import { siteConfig } from "./data.js?v=20260815-event-hall-v1";
+import { siteConfig } from "./data.js?v=20260818-event-request-v5";
 
 export const EVENT_TYPES = [
   "Conference",
@@ -49,7 +49,7 @@ export const EVENT_PAYMENT_METHODS = [
   {
     value: "bank_transfer",
     label: "Bank transfer arranged with Harla Hotel",
-    instructions: `Contact ${siteConfig.phone} or ${siteConfig.email} for the current bank transfer details.`,
+    instructions: `Contact ${siteConfig.phone} or ${siteConfig.eventsEmail} for the current bank transfer details.`,
   },
 ];
 
@@ -117,6 +117,26 @@ export function formatEventTime(value) {
   }).format(date);
 }
 
+function eventTimeMinutes(value) {
+  const match = String(value || "").match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return (hour * 60) + minute;
+}
+
+export function isOvernightEvent(startTime, endTime) {
+  const start = eventTimeMinutes(startTime);
+  const end = eventTimeMinutes(endTime);
+  return start !== null && end !== null && end < start;
+}
+
+export function formatEventTimeRange(startTime, endTime) {
+  const suffix = isOvernightEvent(startTime, endTime) ? " (next day)" : "";
+  return `${formatEventTime(startTime)} to ${formatEventTime(endTime)}${suffix}`;
+}
+
 export function normalizeEventServices(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -156,7 +176,6 @@ export function collectEventBookingForm(form) {
   const payload = Object.fromEntries(formData.entries());
   payload.refreshmentsServices = collectEventServices(formData);
   payload.attendees = Number(payload.attendees);
-  payload.paymentProof = formData.get("paymentProof");
   return payload;
 }
 
@@ -177,7 +196,7 @@ export function validateEventBooking(payload, halls = [], options = {}) {
   if (phone.length < 7 || phone.length > 40) {
     return "Please enter a valid phone number.";
   }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return "Please enter a valid email address.";
   }
   if (!eventType) {
@@ -192,39 +211,14 @@ export function validateEventBooking(payload, halls = [], options = {}) {
   if (!payload.startTime || !payload.endTime) {
     return "Please choose both the start time and end time.";
   }
-  if (payload.endTime <= payload.startTime) {
-    return "End time must be later than start time.";
+  if (payload.endTime === payload.startTime) {
+    return "Start time and end time cannot be the same.";
   }
   if (!Number.isInteger(attendees) || attendees < 1 || attendees > 10000) {
     return "Please enter a valid number of attendees.";
   }
   if (hall.capacity && attendees > Number(hall.capacity)) {
     return `${hall.name} supports up to ${hall.capacity} attendees. Please contact Harla Hotel for another arrangement.`;
-  }
-
-  const validPayment = EVENT_PAYMENT_METHODS.some((method) => method.value === payload.paymentMethod);
-  if (!validPayment) {
-    return "Please choose a payment arrangement.";
-  }
-
-  if (eventPaymentNeedsProof(payload.paymentMethod)) {
-    if (!String(payload.paymentReference || "").trim()) {
-      return "Please enter the payment or transfer reference.";
-    }
-    const proof = payload.paymentProof;
-    if (!options.existingPaymentProof && !proof?.name) {
-      return "Please upload the payment confirmation image.";
-    }
-    if (proof?.name) {
-      const extension = proof.name.split(".").pop()?.toLowerCase();
-      const allowed = new Set(["jpg", "jpeg", "png", "webp"]);
-      if (!allowed.has(extension) || !["image/jpeg", "image/png", "image/webp"].includes(proof.type)) {
-        return "Payment confirmation must be JPG, JPEG, PNG, or WebP.";
-      }
-      if (proof.size > 5 * 1024 * 1024) {
-        return "Payment confirmation must be 5 MB or smaller.";
-      }
-    }
   }
 
   return "";
@@ -236,7 +230,6 @@ function optionMarkup(value, label, selectedValue) {
 
 export function eventBookingFormMarkup({ halls = [], values = {}, mode = "public" } = {}) {
   const isAdmin = mode === "admin";
-  const selectedPayment = values.paymentMethod || "payment_arranged_later";
   const selectedType = values.eventType || "";
 
   return `
@@ -256,8 +249,8 @@ export function eventBookingFormMarkup({ halls = [], values = {}, mode = "public
             <input name="organization" type="text" autocomplete="organization" maxlength="180" value="${escapeHtml(values.organization || "")}" placeholder="Optional for private clients" />
           </label>
           <label>
-            Email
-            <input name="email" type="email" autocomplete="email" maxlength="254" value="${escapeHtml(values.email || "")}" placeholder="name@organization.com" />
+            Email <span aria-hidden="true">*</span>
+            <input name="email" type="email" autocomplete="email" maxlength="254" value="${escapeHtml(values.email || "")}" placeholder="name@organization.com" required />
           </label>
           <label>
             Phone number <span aria-hidden="true">*</span>
@@ -310,6 +303,7 @@ export function eventBookingFormMarkup({ halls = [], values = {}, mode = "public
             End time <span aria-hidden="true">*</span>
             <input name="endTime" type="time" value="${escapeHtml(values.endTime || "")}" required />
           </label>
+          <p class="event-time-hint event-form-wide">An end time earlier than the start time is treated as ending the following day.</p>
         </div>
       </div>
 
@@ -339,58 +333,43 @@ export function eventBookingFormMarkup({ halls = [], values = {}, mode = "public
         </label>
       </div>
 
-      <div class="event-form-section">
-        <div class="event-form-section-heading">
-          <span>4</span>
-          <div><h3>Payment information</h3><p>Submit an existing receipt, or arrange payment after Harla Hotel reviews the event.</p></div>
-        </div>
-        <div class="event-form-grid">
-          <label class="event-form-wide">
-            Payment arrangement <span aria-hidden="true">*</span>
-            <select name="paymentMethod" required>
-              ${EVENT_PAYMENT_METHODS.map((method) => optionMarkup(method.value, method.label, selectedPayment)).join("")}
-            </select>
-          </label>
-        </div>
-        <div class="event-payment-instructions" data-event-payment-instructions>
-          ${escapeHtml(eventPaymentMethod(selectedPayment).instructions)}
-        </div>
-        <div class="event-form-grid event-payment-proof-fields" data-event-payment-proof-fields ${eventPaymentNeedsProof(selectedPayment) ? "" : "hidden"}>
-          <label>
-            Payment reference <span aria-hidden="true">*</span>
-            <input name="paymentReference" type="text" maxlength="160" value="${escapeHtml(values.paymentReference || "")}" placeholder="Transaction or transfer reference" />
-          </label>
-          <label class="event-upload-field">
-            Payment confirmation <span aria-hidden="true">*</span>
-            <input name="paymentProof" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" />
-            <span data-event-proof-name>JPG, PNG, or WebP, up to 5 MB</span>
-          </label>
-        </div>
-        ${isAdmin ? `
-          <div class="event-form-grid event-admin-status-fields">
+      ${isAdmin ? `
+        <div class="event-form-section">
+          <div class="event-form-section-heading">
+            <span>4</span>
+            <div><h3>Admin booking setup</h3><p>Record how the request arrived and choose whether to quote it now.</p></div>
+          </div>
+          <div class="event-form-grid">
             <label>
-              Booking status
-              <select name="adminStatus">
-                ${optionMarkup("pending", "Pending", values.adminStatus || "pending")}
-                ${optionMarkup("confirmed", "Confirmed", values.adminStatus || "pending")}
+              Booking source
+              <select name="bookingSource" required>
+                ${optionMarkup("WALK_IN", "Walk-in customer", values.bookingSource || "WALK_IN")}
+                ${optionMarkup("PHONE", "Phone customer", values.bookingSource || "WALK_IN")}
+                ${optionMarkup("ADMIN_OTHER", "Other manual booking", values.bookingSource || "WALK_IN")}
               </select>
             </label>
             <label>
-              Payment status
-              <select name="adminPaymentStatus">
-                ${optionMarkup("not_submitted", "Not submitted", values.adminPaymentStatus || "not_submitted")}
-                ${optionMarkup("pending_payment_confirmation", "Pending verification", values.adminPaymentStatus || "not_submitted")}
-                ${optionMarkup("verified", "Verified", values.adminPaymentStatus || "not_submitted")}
-                ${optionMarkup("declined", "Declined", values.adminPaymentStatus || "not_submitted")}
+              Save action
+              <select name="saveMode" data-admin-save-mode required>
+                ${optionMarkup("pending", "Save as Pending Request", values.saveMode || "pending")}
+                ${optionMarkup("approve", "Approve and Send Payment Request", values.saveMode || "pending")}
               </select>
             </label>
           </div>
-        ` : ""}
-      </div>
+          <div class="event-admin-quote-fields" data-admin-quote-fields hidden>
+            <div class="event-form-grid">
+              <label>Quoted amount<input name="quotedAmount" type="number" min="0.01" step="0.01" placeholder="25000" /></label>
+              <label>Currency<select name="quotedCurrency"><option value="ETB">ETB</option><option value="USD">USD</option></select></label>
+              <label>Payment deadline<input name="paymentDeadline" type="datetime-local" /></label>
+              <label class="event-form-wide">Payment instructions<textarea name="paymentInstructions" rows="4" maxlength="3000" placeholder="Enter the approved payment instructions"></textarea></label>
+            </div>
+          </div>
+        </div>
+      ` : ""}
 
       <div class="event-form-footer">
-        <p><strong>No online charge is made by this form.</strong> Harla Hotel reviews the date, setup, and payment information before final confirmation.</p>
-        <button class="btn btn-primary" type="submit">${isAdmin ? "Review Admin Booking" : "Review Reservation"}</button>
+        <p><strong>No payment is required when submitting this request.</strong> Event pricing is customized after the Events Team reviews the date, hall, attendance, and services.</p>
+        <button class="btn btn-primary" type="submit">${isAdmin ? "Review Event Request" : "Review Event Request"}</button>
       </div>
       <p class="form-status" role="status" aria-live="polite"></p>
     </form>
@@ -398,19 +377,7 @@ export function eventBookingFormMarkup({ halls = [], values = {}, mode = "public
 }
 
 export function wireEventBookingForm(form) {
-  const paymentSelect = form.querySelector("[name='paymentMethod']");
-  const paymentFields = form.querySelector("[data-event-payment-proof-fields]");
-  const paymentInstructions = form.querySelector("[data-event-payment-instructions]");
   const customType = form.querySelector("[data-custom-event-type]");
-
-  function updatePayment() {
-    const method = eventPaymentMethod(paymentSelect.value);
-    paymentInstructions.textContent = method.instructions;
-    paymentFields.hidden = !eventPaymentNeedsProof(method.value);
-    paymentFields.querySelectorAll("input").forEach((input) => {
-      input.required = eventPaymentNeedsProof(method.value);
-    });
-  }
 
   function updateEventType() {
     const show = form.elements.eventType.value === "Other";
@@ -433,18 +400,20 @@ export function wireEventBookingForm(form) {
   });
 
   form.elements.eventType.addEventListener("change", updateEventType);
-  paymentSelect.addEventListener("change", updatePayment);
-  form.elements.paymentProof?.addEventListener("change", (event) => {
-    const fileName = form.querySelector("[data-event-proof-name]");
-    fileName.textContent = event.target.files[0]?.name || "JPG, PNG, or WebP, up to 5 MB";
+  form.elements.saveMode?.addEventListener("change", () => {
+    const show = form.elements.saveMode.value === "approve";
+    const fields = form.querySelector("[data-admin-quote-fields]");
+    fields.hidden = !show;
+    fields.querySelectorAll("input, textarea").forEach((input) => {
+      input.required = show && ["quotedAmount", "paymentInstructions"].includes(input.name);
+    });
   });
-  updatePayment();
+  form.elements.saveMode?.dispatchEvent(new Event("change"));
   updateEventType();
 }
 
 export function eventBookingSummaryMarkup(payload, hall) {
   const services = normalizeEventServices(payload.refreshmentsServices);
-  const payment = eventPaymentMethod(payload.paymentMethod);
   const detail = (label, value) => `
     <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value || "-")}</dd></div>
   `;
@@ -452,7 +421,7 @@ export function eventBookingSummaryMarkup(payload, hall) {
   return `
     <section class="event-review-card" aria-labelledby="event-review-title">
       <div class="event-review-heading">
-        <div><p class="eyebrow">Reservation Review</p><h2 id="event-review-title">Confirm the event details</h2></div>
+        <div><p class="eyebrow">Request Review</p><h2 id="event-review-title">Confirm the event request</h2></div>
         <span>Price on review</span>
       </div>
       <dl class="event-review-details">
@@ -463,9 +432,8 @@ export function eventBookingSummaryMarkup(payload, hall) {
         ${detail("Hall", hall?.name)}
         ${detail("Event type", payload.eventType === "Other" ? payload.customEventType : payload.eventType)}
         ${detail("Event date", formatEventDate(payload.eventDate))}
-        ${detail("Time", `${formatEventTime(payload.startTime)} to ${formatEventTime(payload.endTime)}`)}
+        ${detail("Time", formatEventTimeRange(payload.startTime, payload.endTime))}
         ${detail("Attendees", payload.attendees)}
-        ${detail("Payment", payment.label)}
       </dl>
       <div class="event-review-services">
         <h3>Refreshments and services</h3>
@@ -476,7 +444,7 @@ export function eventBookingSummaryMarkup(payload, hall) {
       ${payload.specialRequests ? `<div class="event-review-note"><h3>Additional requests</h3><p>${escapeHtml(payload.specialRequests)}</p></div>` : ""}
       <div class="event-review-actions">
         <button class="btn btn-light" type="button" data-edit-event-booking>Edit Details</button>
-        <button class="btn btn-primary" type="button" data-confirm-event-booking>Confirm Reservation</button>
+        <button class="btn btn-primary" type="button" data-confirm-event-booking>Submit Event Request</button>
       </div>
       <p class="form-status" role="status" aria-live="polite"></p>
     </section>

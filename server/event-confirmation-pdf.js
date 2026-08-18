@@ -16,8 +16,13 @@ const palette = {
 
 const reservationStatusLabels = {
   pending: "Pending Review",
+  pending_review: "Pending Review",
+  needs_information: "Additional Information Required",
+  approved_awaiting_payment: "Approved - Awaiting Payment",
+  payment_submitted: "Payment Submitted - Awaiting Verification",
   confirmed: "Confirmed",
   completed: "Completed",
+  rejected: "Request Not Available",
   cancelled: "Cancelled",
 };
 
@@ -101,6 +106,13 @@ function formatTime(value) {
   return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
+function formatTimeRange(startTime, endTime) {
+  const start = String(startTime || "");
+  const end = String(endTime || "");
+  const nextDay = end && start && end < start ? " (next day)" : "";
+  return `${formatTime(startTime)} to ${formatTime(endTime)}${nextDay}`;
+}
+
 function services(value) {
   return Array.isArray(value)
     ? value.filter((item) => item?.name).map((item) => {
@@ -172,7 +184,7 @@ export async function generateEventHallConfirmationPdf(booking, assets = {}) {
     page.drawText("HARLA HOTEL", { x: margin, y: A4[1] - 40, size: 23, font: bold, color: palette.white });
     page.drawText(title, { x: margin, y: A4[1] - 61, size: 10, font: regular, color: palette.white });
     page.drawText("Harar, Ethiopia", { x: margin, y: A4[1] - 80, size: 8.5, font: regular, color: palette.white });
-    page.drawText("+251 915 321 188  |  booking@harlahotel.com", {
+    page.drawText("+251 915 321 188  |  events@harlahotel.com", {
       x: margin,
       y: A4[1] - 96,
       size: 8.5,
@@ -339,8 +351,11 @@ export async function generateEventHallConfirmationPdf(booking, assets = {}) {
       ["Hall", booking.hall_name],
       ["Event", eventType(booking)],
       ["Date", formatDate(booking.event_date)],
-      ["Time", `${formatTime(booking.start_time)} to ${formatTime(booking.end_time)}`],
+      ["Time", formatTimeRange(booking.start_time, booking.end_time)],
       ["Guests", booking.attendees],
+      ["Final Amount", booking.quoted_amount
+        ? `${Number(booking.quoted_amount).toLocaleString("en-US", { minimumFractionDigits: 2 })} ${booking.quoted_currency || "ETB"}`
+        : null],
     ], cardWidth);
     const height = Math.max(client.height, reservation.height);
     ensureSpace(height);

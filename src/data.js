@@ -8,6 +8,7 @@ export const siteConfig = {
   phone: "+251 915 321 188",
   whatsapp: "+251 915 321 188",
   email: "booking@harlahotel.com",
+  eventsEmail: "events@harlahotel.com",
   address: "Harar, Ethiopia",
   // REPLACE: Update this Google Maps link if the final hotel listing changes.
   googleMapsUrl: "https://maps.app.goo.gl/ZR1Qz3pQxqCr7UnV6",

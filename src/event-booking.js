@@ -1,30 +1,26 @@
-import { Footer, Navbar } from "./components.js?v=20260815-event-hall-v1";
-import { eventHallFallbacks, images, siteConfig, whatsappLinks } from "./data.js?v=20260815-event-hall-v1";
+import { Footer, Navbar } from "./components.js?v=20260818-event-request-v5";
+import { eventHallFallbacks, images, siteConfig, whatsappLinks } from "./data.js?v=20260818-event-request-v5";
 import {
   collectEventBookingForm,
   createEventSubmissionToken,
   escapeHtml,
   eventBookingFormMarkup,
   eventBookingSummaryMarkup,
-  eventPaymentMethod,
-  eventPaymentNeedsProof,
   formatEventDate,
-  formatEventTime,
+  formatEventTimeRange,
   validateEventBooking,
   wireEventBookingForm,
-} from "./event-booking-core.js?v=20260815-event-hall-v1";
+} from "./event-booking-core.js?v=20260818-event-request-v5";
 import {
-  createEventHallBooking,
-  generateEventHallOfficialConfirmation,
   getEventHalls,
   isBackendReady,
-  sendEventHallConfirmationEmail,
-  uploadEventHallPaymentProof,
-} from "./supabase-api.js?v=20260815-event-hall-v1";
+} from "./supabase-api.js?v=20260818-event-request-v5";
 import {
-  downloadEventHallConfirmationPdf,
-  openPrintableEventHallConfirmation,
-} from "./event-confirmation-pdf.js?v=20260815-event-hall-v1";
+  checkEventRequestBackendReadiness,
+  checkEventHallAvailability,
+  submitEventHallRequest,
+} from "./event-api.js?v=20260818-event-request-v5";
+import { rememberPortalAccess } from "./event-portal-access.js?v=20260818-event-request-v5";
 
 const app = document.querySelector("#event-booking-app");
 const params = new URLSearchParams(window.location.search);
@@ -33,16 +29,15 @@ const requestedHall = params.get("hall") || "";
 const state = {
   halls: eventHallFallbacks,
   catalogueSource: "fallback",
+  backendReady: false,
   stage: "form",
   submissionToken: createEventSubmissionToken(),
   payload: null,
   booking: null,
-  pdfReady: false,
-  pdfError: "",
-  emailMessage: "",
   isSubmitting: false,
-  isGeneratingPdf: false,
   pageMessage: "",
+  portalUrl: "",
+  emailDelivery: null,
 };
 
 function selectedHall() {
@@ -58,9 +53,9 @@ function stepper() {
   return `
     <ol class="event-booking-stepper" aria-label="Event booking progress">
       ${[
-        [1, "Event Details"],
-        [2, "Review"],
-        [3, "Reference"],
+        [1, "Event Request"],
+        [2, "Review Request"],
+        [3, "Request Received"],
       ].map(([number, label]) => `
         <li class="${current === number ? "is-active" : ""} ${current > number ? "is-complete" : ""}">
           <span>${current > number ? "✓" : number}</span><strong>${label}</strong>
@@ -93,50 +88,43 @@ function reviewStage() {
 function successStage() {
   const booking = state.booking;
   const payload = state.payload;
-  const payment = eventPaymentMethod(booking.payment_method);
+  const eventsEmail = siteConfig.eventsEmail;
+  const emailMessage = state.emailDelivery?.sent
+    ? `<p class="is-success"><strong>Email sent:</strong> A secure request link has been sent to ${escapeHtml(payload.email)}.</p>`
+    : `<p class="is-warning"><strong>Email delivery:</strong> Your request was saved, but the secure email could not be delivered. Contact the Events Team at <a href="mailto:${eventsEmail}">${eventsEmail}</a> or <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>.</p>`;
   return `
     <section class="event-booking-success" aria-labelledby="event-success-title">
       <div class="event-success-mark" aria-hidden="true">✓</div>
       <p class="eyebrow">Request Received</p>
-      <h2 id="event-success-title">Thank you for choosing Harla Hotel</h2>
+      <h2 id="event-success-title">Your event request has been received</h2>
       <p>
-        Your event hall reservation request has been saved. The Harla Hotel events team will review
-        the schedule, services, and payment information before confirming the reservation.
+        Harla Hotel's Events Team will review availability and contact you shortly.
+        No payment is required at this stage.
       </p>
       <div class="event-reference-panel">
-        <span>Booking reference</span>
+        <span>Request reference</span>
         <strong>${escapeHtml(booking.booking_reference)}</strong>
-        <p>Keep this reference when contacting the hotel.</p>
+        <p>Keep this reference and the secure portal link sent to your email.</p>
       </div>
       <dl class="event-success-details">
         <div><dt>Client</dt><dd>${escapeHtml(booking.client_full_name)}</dd></div>
         ${booking.organization ? `<div><dt>Organization</dt><dd>${escapeHtml(booking.organization)}</dd></div>` : ""}
         <div><dt>Hall</dt><dd>${escapeHtml(booking.hall_name)}</dd></div>
         <div><dt>Event date</dt><dd>${escapeHtml(formatEventDate(booking.event_date))}</dd></div>
-        <div><dt>Time</dt><dd>${escapeHtml(formatEventTime(booking.start_time))} to ${escapeHtml(formatEventTime(booking.end_time))}</dd></div>
+        <div><dt>Time</dt><dd>${escapeHtml(formatEventTimeRange(booking.start_time, booking.end_time))}</dd></div>
         <div><dt>Attendees</dt><dd>${escapeHtml(booking.attendees)}</dd></div>
-        <div><dt>Payment</dt><dd>${escapeHtml(payment.label)}</dd></div>
-        <div><dt>Payment status</dt><dd>Pending verification or arrangement</dd></div>
-        <div><dt>Reservation status</dt><dd>Pending review</dd></div>
+        <div><dt>Request status</dt><dd>Request Received - Pending Review</dd></div>
       </dl>
       <div class="event-delivery-status" role="status" aria-live="polite">
-        <p class="${state.pdfReady ? "is-success" : "is-warning"}">
-          <strong>Confirmation letter:</strong>
-          ${state.pdfReady ? "Ready to download or print." : escapeHtml(state.pdfError || "The booking is saved. Use Download or Print to retry the secure confirmation letter.")}
-        </p>
-        ${payload.email ? `
-          <p class="${state.emailMessage.startsWith("Sent") ? "is-success" : "is-warning"}">
-            <strong>Email:</strong> ${escapeHtml(state.emailMessage || "Confirmation email is being prepared.")}
-          </p>
-        ` : `<p><strong>Email:</strong> No email address was supplied.</p>`}
+        <p class="is-success"><strong>Request saved:</strong> Your request is stored securely and can be opened again after closing this page.</p>
+        ${emailMessage}
       </div>
       <div class="event-success-actions">
-        <button class="btn btn-primary" type="button" data-download-event-pdf ${state.isGeneratingPdf ? "disabled" : ""}>Download Confirmation Letter</button>
-        <button class="btn btn-light" type="button" data-print-event-pdf ${state.isGeneratingPdf ? "disabled" : ""}>Print Confirmation Letter</button>
+        <a class="btn btn-primary" href="${escapeHtml(state.portalUrl)}">View Request Status</a>
         <a class="btn btn-whatsapp" href="${whatsappLinks.event}" target="_blank" rel="noopener">Contact Events Team</a>
-        <button class="text-link event-start-again" type="button" data-event-start-again>Start Another Booking</button>
+        <button class="text-link event-start-again" type="button" data-event-start-again>Submit Another Request</button>
       </div>
-      <p class="event-success-contact">Questions? Call <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a> or email <a href="mailto:${siteConfig.email}">${siteConfig.email}</a>.</p>
+      <p class="event-success-contact">Questions? Call <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a> or email <a href="mailto:${eventsEmail}">${eventsEmail}</a>.</p>
     </section>
   `;
 }
@@ -148,8 +136,8 @@ function render() {
       <section class="event-reservation-intro">
         <div>
           <p class="eyebrow">Harla Hotel Events</p>
-          <h1>Event Hall Reservation</h1>
-          <p>Submit one complete request for the hall, schedule, attendance, refreshments, and payment arrangement.</p>
+          <h1>Request an Event Space</h1>
+          <p>Tell the Events Team what you need. Pricing is customized, and no payment is required when submitting the request.</p>
         </div>
         <img src="${images.logo}" alt="${siteConfig.brandName} logo" />
       </section>
@@ -157,7 +145,7 @@ function render() {
       ${state.pageMessage ? `<p class="event-page-message" role="status">${escapeHtml(state.pageMessage)}</p>` : ""}
       ${state.stage === "form" ? formStage() : state.stage === "review" ? reviewStage() : successStage()}
     </main>
-    ${Footer()}
+    ${Footer({ email: siteConfig.eventsEmail })}
   `;
 
   document.querySelector("[data-header]")?.classList.add("is-scrolled");
@@ -194,97 +182,50 @@ function wireStage() {
     return;
   }
 
-  document.querySelector("[data-download-event-pdf]")?.addEventListener("click", () => {
-    runPdfAction("download");
-  });
-  document.querySelector("[data-print-event-pdf]")?.addEventListener("click", () => {
-    const preparedWindow = window.open("", "_blank");
-    runPdfAction("print", preparedWindow);
-  });
   document.querySelector("[data-event-start-again]")?.addEventListener("click", () => {
     state.stage = "form";
     state.submissionToken = createEventSubmissionToken();
     state.payload = { hallId: state.booking.hall_id };
     state.booking = null;
-    state.pdfReady = false;
-    state.pdfError = "";
-    state.emailMessage = "";
-    state.isGeneratingPdf = false;
+    state.portalUrl = "";
+    state.emailDelivery = null;
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 }
 
-async function refreshOfficialConfirmation() {
-  try {
-    const confirmation = await generateEventHallOfficialConfirmation(
-      state.booking,
-      state.submissionToken,
-    );
-    state.booking.confirmation_pdf_display_url = confirmation.signedUrl;
-    state.pdfReady = true;
-    state.pdfError = "";
-    return confirmation;
-  } catch (error) {
-    state.pdfReady = false;
-    state.pdfError = error.message
-      || "The secure confirmation letter could not be generated. Please try again or contact Harla Hotel.";
-    throw new Error(state.pdfError);
-  }
-}
-
-async function runPdfAction(action, preparedWindow = null) {
-  if (state.isGeneratingPdf) {
-    preparedWindow?.close();
-    return;
-  }
-
-  state.isGeneratingPdf = true;
-  state.pageMessage = "";
-  document.querySelectorAll("[data-download-event-pdf], [data-print-event-pdf]")
-    .forEach((button) => {
-      button.disabled = true;
-    });
-
-  try {
-    await refreshOfficialConfirmation();
-    if (action === "print") {
-      await openPrintableEventHallConfirmation(state.booking, preparedWindow);
-    } else {
-      await downloadEventHallConfirmationPdf(state.booking);
-    }
-  } catch (error) {
-    preparedWindow?.close();
-    state.pdfError = error.message
-      || "The secure confirmation letter could not be opened. Please try again or contact Harla Hotel.";
-  } finally {
-    state.isGeneratingPdf = false;
-    render();
-  }
-}
-
-function handleReview(event) {
+async function handleReview(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const status = form.querySelector(".form-status");
   const payload = collectEventBookingForm(form);
-  if (!payload.paymentProof?.name && state.payload?.paymentProof?.name) {
-    payload.paymentProof = state.payload.paymentProof;
-  }
-  const validation = validateEventBooking(payload, state.halls, {
-    existingPaymentProof: Boolean(payload.paymentProof?.name),
-  });
+  const validation = validateEventBooking(payload, state.halls);
 
   if (validation) {
     status.textContent = validation;
     return;
   }
 
-  state.payload = payload;
-  state.stage = "review";
-  state.pageMessage = "";
-  render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  try {
+    status.textContent = "Checking the selected hall and time...";
+    const availability = await checkEventHallAvailability({
+      hallId: payload.hallId,
+      eventDate: payload.eventDate,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+    });
+    if (!availability.available) {
+      status.textContent = "This hall is unavailable for the selected date and time. Please choose another time or contact Harla Hotel.";
+      return;
+    }
+    state.payload = payload;
+    state.stage = "review";
+    state.pageMessage = "";
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (error) {
+    status.textContent = error.message || "Hall availability could not be checked.";
+  }
 }
 
 async function submitBooking() {
@@ -297,7 +238,7 @@ async function submitBooking() {
   const payload = state.payload;
   const hall = selectedHall();
 
-  if (!isBackendReady() || state.catalogueSource !== "database") {
+  if (!isBackendReady() || state.catalogueSource !== "database" || !state.backendReady) {
     status.textContent = "Online event reservations need the Event Hall Booking Supabase migration before submission. Please contact Harla Hotel for immediate assistance.";
     return;
   }
@@ -305,55 +246,29 @@ async function submitBooking() {
   try {
     state.isSubmitting = true;
     button.disabled = true;
-    button.textContent = "Saving Reservation...";
-    let paymentScreenshotPath = "";
-
-    if (eventPaymentNeedsProof(payload.paymentMethod)) {
-      status.textContent = "Uploading payment confirmation securely...";
-      paymentScreenshotPath = await uploadEventHallPaymentProof(
-        payload.paymentProof,
-        state.submissionToken,
-      );
-    }
-
-    status.textContent = "Checking hall availability and saving the reservation...";
-    const booking = await createEventHallBooking({
+    button.textContent = "Submitting Request...";
+    status.textContent = "Checking availability and saving your event request...";
+    const result = await submitEventHallRequest({
       ...payload,
       submissionToken: state.submissionToken,
-      paymentScreenshotPath,
     });
-
     state.booking = {
-      ...booking,
+      booking_reference: result.request.bookingReference,
+      client_full_name: result.request.clientFullName,
+      organization: result.request.organization,
+      hall_name: result.request.hallName || hall.name,
+      event_date: result.request.eventDate,
+      start_time: result.request.startTime,
+      end_time: result.request.endTime,
+      attendees: result.request.attendees,
       hall_id: payload.hallId,
-      address: payload.address,
-      payment_reference: payload.paymentReference,
-      payment_screenshot_path: paymentScreenshotPath,
-      refreshments_services: payload.refreshmentsServices,
-      special_requests: payload.specialRequests,
-      booking_source: booking.booking_source || "WEBSITE",
-      hall_name: booking.hall_name || hall.name,
     };
-
-    try {
-      status.textContent = "Creating the official confirmation letter...";
-      await refreshOfficialConfirmation();
-    } catch (error) {
-      console.error("Official event confirmation PDF could not be generated", error);
-      state.pdfError = error.message
-        || "The reservation is saved, but the confirmation letter could not be generated. Please use Download or Print to retry.";
-    }
-
-    if (state.booking.email) {
-      try {
-        const email = await sendEventHallConfirmationEmail(state.booking);
-        state.emailMessage = email.sent
-          ? "Sent to the supplied email address."
-          : "No confirmation email was sent.";
-      } catch (error) {
-        state.emailMessage = error.message || "The reservation is saved, but confirmation email could not be sent.";
-      }
-    }
+    state.portalUrl = "./event-request.html";
+    state.emailDelivery = result.email || { sent: false };
+    rememberPortalAccess(localStorage, {
+      reference: result.request.bookingReference,
+      token: result.portalToken,
+    });
 
     state.stage = "success";
     state.pageMessage = "";
@@ -362,7 +277,7 @@ async function submitBooking() {
   } catch (error) {
     status.textContent = error.message || "The event hall reservation could not be saved. Please contact Harla Hotel.";
     button.disabled = false;
-    button.textContent = "Confirm Reservation";
+    button.textContent = "Submit Event Request";
   } finally {
     state.isSubmitting = false;
   }
@@ -371,10 +286,17 @@ async function submitBooking() {
 async function loadPage() {
   if (isBackendReady()) {
     try {
-      const halls = await getEventHalls();
+      const [halls, readiness] = await Promise.all([
+        getEventHalls(),
+        checkEventRequestBackendReadiness(),
+      ]);
       if (halls.length) {
         state.halls = halls;
         state.catalogueSource = "database";
+      }
+      state.backendReady = readiness.ready === true;
+      if (!state.backendReady) {
+        state.pageMessage = "Online event requests are being prepared. You can review the form now or contact Harla Hotel for immediate assistance.";
       }
     } catch (error) {
       state.pageMessage = "The online hall catalogue is temporarily unavailable. You can review the form, or contact Harla Hotel to reserve immediately.";

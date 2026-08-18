@@ -21,7 +21,7 @@ function safeStampPath() {
 }
 
 function confirmationPath(booking) {
-  const source = booking.booking_source === "ADMIN" ? "admin" : "website";
+  const source = booking.booking_source === "WEBSITE" ? "website" : "admin";
   return `${source}/${booking.booking_reference}.pdf`;
 }
 
@@ -111,6 +111,9 @@ export async function ensureEventHallConfirmationPdf(
   booking,
   { force = false } = {},
 ) {
+  if (!["confirmed", "completed"].includes(String(booking.status || "").toLowerCase())) {
+    throw new Error("An official Event Hall confirmation is available only after the reservation is confirmed.");
+  }
   const trustedExistingPdf = Boolean(
     booking.confirmation_pdf_path
       && booking.confirmation_pdf_generated_at

@@ -3,7 +3,6 @@ import { supabaseSetupMessage } from "./supabase-config.js?v=20260521-room-autom
 
 const requestTables = new Set([
   "room_bookings",
-  "event_requests",
   "restaurant_requests",
   "restaurant_orders",
   "package_bookings",
@@ -49,30 +48,6 @@ async function withSignedPaymentScreenshots(supabase, rows = []) {
         ...row,
         payment_screenshot_display_url: data?.signedUrl || "",
       };
-    }),
-  );
-}
-
-async function withSignedEventDocuments(supabase, rows = []) {
-  return Promise.all(
-    rows.map(async (row) => {
-      const signed = { ...row };
-
-      if (row.payment_screenshot_path) {
-        const { data } = await supabase.storage
-          .from("payment-screenshots")
-          .createSignedUrl(row.payment_screenshot_path, 60 * 60);
-        signed.payment_screenshot_display_url = data?.signedUrl || "";
-      }
-
-      if (row.confirmation_pdf_path) {
-        const { data } = await supabase.storage
-          .from("event-confirmations")
-          .createSignedUrl(row.confirmation_pdf_path, 60 * 60, { download: false });
-        signed.confirmation_pdf_display_url = data?.signedUrl || "";
-      }
-
-      return signed;
     }),
   );
 }
@@ -528,150 +503,6 @@ export async function uploadGovernmentId(file, bookingReference) {
   };
 }
 
-export async function uploadEventHallPaymentProof(file, submissionToken) {
-  if (!file?.name) {
-    throw new Error("Payment confirmation file is required.");
-  }
-
-  const extension = clean(file.name).split(".").pop()?.toLowerCase();
-  const extensionTypes = {
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    webp: "image/webp",
-  };
-  const mimeType = file.type || extensionTypes[extension] || "";
-
-  if (!extensionTypes[extension] || extensionTypes[extension] !== mimeType) {
-    throw new Error("Payment confirmation must be JPG, JPEG, PNG, or WebP.");
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error("Payment confirmation must be 5 MB or smaller.");
-  }
-
-  const tokenFolder = safeStorageSegment(submissionToken, "event-booking");
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = safeStorageFileName(file.name, "payment-proof");
-  const path = `event-hall-bookings/${tokenFolder}/${timestamp}-${fileName}`;
-  const supabase = await getSupabaseClient();
-  const { error } = await supabase.storage
-    .from("payment-screenshots")
-    .upload(path, file, {
-      cacheControl: "3600",
-      contentType: mimeType,
-      upsert: false,
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  return path;
-}
-
-export async function createEventHallBooking(payload) {
-  const services = Array.isArray(payload.refreshmentsServices)
-    ? payload.refreshmentsServices
-    : [];
-  const supabase = await getSupabaseClient();
-  const { data, error } = await supabase.rpc("create_event_hall_booking", {
-    p_submission_token: requireText(payload.submissionToken, "Submission token"),
-    p_hall_id: requireText(payload.hallId, "Event hall"),
-    p_client_full_name: requireText(payload.clientFullName, "Full name"),
-    p_organization: optionalText(payload.organization),
-    p_email: optionalText(payload.email),
-    p_phone: requireText(payload.phone, "Phone number"),
-    p_address: optionalText(payload.address),
-    p_event_type: requireText(payload.eventType, "Event type"),
-    p_custom_event_type: optionalText(payload.customEventType),
-    p_event_date: requireText(payload.eventDate, "Event date"),
-    p_start_time: requireText(payload.startTime, "Start time"),
-    p_end_time: requireText(payload.endTime, "End time"),
-    p_attendees: requirePositiveNumber(payload.attendees, "Number of attendees"),
-    p_refreshments_services: services,
-    p_special_requests: optionalText(payload.specialRequests),
-    p_payment_method: optionalText(payload.paymentMethod) || "payment_arranged_later",
-    p_payment_reference: optionalText(payload.paymentReference),
-    p_payment_screenshot_path: optionalText(payload.paymentScreenshotPath),
-    p_admin_status: optionalText(payload.adminStatus) || "pending",
-    p_admin_payment_status: optionalText(payload.adminPaymentStatus),
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return Array.isArray(data) ? data[0] || null : data;
-}
-
-export async function generateEventHallOfficialConfirmation(
-  booking,
-  submissionToken = "",
-  options = {},
-) {
-  const supabase = await getSupabaseClient();
-  const { data: sessionData } = await supabase.auth.getSession();
-  const response = await fetch("/api/event-confirmation", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(sessionData.session?.access_token
-        ? { Authorization: `Bearer ${sessionData.session.access_token}` }
-        : {}),
-    },
-    body: JSON.stringify({
-      bookingReference: requireText(booking.booking_reference, "Booking reference"),
-      submissionToken: optionalText(submissionToken),
-      regenerate: Boolean(options.regenerate),
-    }),
-  });
-
-  let result;
-  try {
-    result = await response.json();
-  } catch {
-    throw new Error("The secure confirmation service is not available in this preview.");
-  }
-  if (!response.ok) {
-    throw new Error(result.error || "The official confirmation could not be generated.");
-  }
-  return result;
-}
-
-export async function sendEventHallConfirmationEmail(booking, options = {}) {
-  const supabase = await getSupabaseClient();
-  const { data: sessionData } = await supabase.auth.getSession();
-  const response = await fetch("/api/event-confirmation-email", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(sessionData.session?.access_token
-        ? { Authorization: `Bearer ${sessionData.session.access_token}` }
-        : {}),
-    },
-    body: JSON.stringify({
-      bookingReference: booking.booking_reference,
-      phone: booking.phone,
-      resend: Boolean(options.resend),
-    }),
-  });
-
-  let result;
-  try {
-    result = await response.json();
-  } catch {
-    throw new Error("The confirmation email service is not available in this preview.");
-  }
-
-  if (!response.ok) {
-    throw new Error(result.error || "The confirmation email could not be sent.");
-  }
-
-  return result;
-}
-
 export async function createEventRequest(payload) {
   return insertPending("event_requests", {
     service_type: requireText(payload.serviceType || "Event hall booking", "Booking type"),
@@ -780,16 +611,6 @@ export async function getAdminDashboardData() {
   const dashboardErrors = [];
   const queries = {
     roomBookings: supabase.from("room_bookings").select("*").order("created_at", { ascending: false }),
-    eventRequests: supabase.from("event_requests").select("*").order("created_at", { ascending: false }),
-    eventHallBookings: supabase
-      .from("event_hall_bookings")
-      .select("*")
-      .order("event_date", { ascending: true })
-      .order("start_time", { ascending: true }),
-    eventHalls: supabase
-      .from("event_halls")
-      .select("id, slug, name, hall_type, description, capacity, price_note, image_paths, facilities, features, seating_notes, is_active")
-      .order("name", { ascending: true }),
     restaurantRequests: supabase.from("restaurant_requests").select("*").order("created_at", { ascending: false }),
     restaurantOrders: supabase.from("restaurant_orders").select("*").order("created_at", { ascending: false }),
     roomInventory: supabase
@@ -819,44 +640,7 @@ export async function getAdminDashboardData() {
   dashboardData.dashboardErrors = dashboardErrors;
   dashboardData.roomBookings = await withSignedPaymentScreenshots(supabase, dashboardData.roomBookings || []);
   dashboardData.restaurantOrders = await withSignedPaymentScreenshots(supabase, dashboardData.restaurantOrders || []);
-  dashboardData.eventHallBookings = await withSignedEventDocuments(
-    supabase,
-    dashboardData.eventHallBookings || [],
-  );
-
   return dashboardData;
-}
-
-export async function getEventHallBookingById(id) {
-  const supabase = await getSupabaseClient();
-  const { data, error } = await supabase
-    .from("event_hall_bookings")
-    .select("*")
-    .eq("id", requireText(id, "Booking ID"))
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  const [signed] = await withSignedEventDocuments(supabase, [data]);
-  return signed;
-}
-
-export async function updateEventHallBookingStatus(id, status, paymentStatus, declineReason = "") {
-  const supabase = await getSupabaseClient();
-  const { data, error } = await supabase.rpc("update_event_hall_booking_status", {
-    p_booking_id: requireText(id, "Booking ID"),
-    p_status: requireText(status, "Booking status"),
-    p_payment_status: requireText(paymentStatus, "Payment status"),
-    p_decline_reason: optionalText(declineReason),
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return Array.isArray(data) ? data[0] || null : data;
 }
 
 export async function updateRequestStatus(table, id, status) {

@@ -4099,6 +4099,7 @@ textarea {
 .event-reservation-form input,
 .event-reservation-form select,
 .event-reservation-form textarea,
+.event-detail-status-form input,
 .event-detail-status-form select,
 .event-detail-status-form textarea,
 .admin-event-search input {
@@ -4114,6 +4115,7 @@ textarea {
 
 .event-reservation-form input,
 .event-reservation-form select,
+.event-detail-status-form input,
 .event-detail-status-form select,
 .admin-event-search input {
   padding: 0 13px;
@@ -4129,6 +4131,7 @@ textarea {
 .event-reservation-form input:focus-visible,
 .event-reservation-form select:focus-visible,
 .event-reservation-form textarea:focus-visible,
+.event-detail-status-form input:focus-visible,
 .event-detail-status-form select:focus-visible,
 .event-detail-status-form textarea:focus-visible,
 .admin-event-search input:focus-visible {
@@ -4140,6 +4143,16 @@ textarea {
 .event-form-wide,
 .event-form-block {
   grid-column: 1 / -1;
+}
+
+.event-time-hint {
+  margin: -5px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid #b88920;
+  background: #f7f3e8;
+  color: #625b50;
+  font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 .event-form-block {
@@ -4201,12 +4214,18 @@ textarea {
 }
 
 .event-payment-instructions {
+  display: grid;
+  gap: 7px;
   margin: 14px 0 18px;
   padding: 14px 16px;
   border-radius: 7px;
   background: #252523;
   color: #f0d278;
   font-weight: 700;
+}
+
+.event-payment-instructions span {
+  white-space: pre-line;
 }
 
 .event-upload-field input[type="file"] {
@@ -4507,6 +4526,286 @@ textarea {
   margin-top: 14px;
 }
 
+.event-admin-quote-fields {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #d7d0c3;
+}
+
+.event-portal-shell {
+  min-height: 100vh;
+  padding: 132px 20px 72px;
+  background: #171716;
+  color: #f7f3e8;
+}
+
+.event-portal-access,
+.event-portal-status,
+.event-portal-action {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: 34px;
+  border-radius: 12px;
+  background: #f7f5f0;
+  color: #242321;
+  box-shadow: 0 6px 8px rgb(0 0 0 / 28%);
+}
+
+.event-portal-access {
+  max-width: 620px;
+}
+
+.event-portal-access h1,
+.event-portal-status h1,
+.event-portal-action h2 {
+  margin: 6px 0 12px;
+  color: #242321;
+  font-family: var(--font-display);
+  text-wrap: balance;
+}
+
+.event-portal-access form,
+.event-portal-action form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.event-portal-access label,
+.event-portal-action label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.event-portal-access input,
+.event-portal-action input {
+  width: 100%;
+  min-height: 47px;
+  padding: 0 13px;
+  border: 1px solid #bdb6a8;
+  border-radius: 7px;
+  background: #fff;
+  color: #242321;
+  font: inherit;
+}
+
+.event-portal-access input:focus-visible,
+.event-portal-action input:focus-visible {
+  border-color: #a57813;
+  outline: 3px solid rgb(199 155 50 / 28%);
+  outline-offset: 1px;
+}
+
+.event-portal-help {
+  margin: 22px 0 0;
+  color: #625c52;
+  font-size: 0.86rem;
+}
+
+.event-portal-recovery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 24px 0;
+  padding: 16px 0;
+  border-top: 1px solid #d8d1c3;
+  border-bottom: 1px solid #d8d1c3;
+}
+
+.event-portal-recovery a {
+  color: #72520d;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.event-portal-loader {
+  width: 34px;
+  height: 34px;
+  margin-top: 24px;
+  border: 3px solid #ddd4c2;
+  border-top-color: #b98718;
+  border-radius: 50%;
+  animation: event-portal-spin 0.8s linear infinite;
+}
+
+@keyframes event-portal-spin {
+  to { transform: rotate(360deg); }
+}
+
+.event-portal-status-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #d8d1c3;
+}
+
+.event-status-badge {
+  max-width: 240px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #e8e3d8;
+  color: #38352f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.event-status-badge.status-confirmed,
+.event-status-badge.status-completed {
+  background: #dcebdc;
+  color: #24542a;
+}
+
+.event-status-badge.status-approved_awaiting_payment,
+.event-status-badge.status-payment_submitted {
+  background: #f4e8bd;
+  color: #6b4c08;
+}
+
+.event-status-badge.status-rejected,
+.event-status-badge.status-cancelled {
+  background: #f0d9d3;
+  color: #782b1c;
+}
+
+.event-portal-status-copy {
+  max-width: 72ch;
+  margin: 22px 0;
+  color: #5f594f;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.event-portal-details {
+  margin-top: 20px;
+}
+
+.event-portal-services {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.event-portal-action {
+  margin-top: 22px;
+}
+
+.event-payment-amount {
+  margin: 0 0 14px;
+  color: #7a570b;
+  font-size: 1.35rem;
+  font-weight: 850;
+}
+
+.event-portal-confirmation {
+  margin-top: 24px;
+  padding: 22px;
+  border-radius: 8px;
+  background: #242422;
+  color: #f7f3e8;
+}
+
+.event-portal-confirmation h2 {
+  margin-top: 0;
+  color: #edcb70;
+}
+
+.event-admin-shell {
+  display: grid;
+  gap: 24px;
+}
+
+.event-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(112px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.event-admin-summary-item {
+  min-height: 94px;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #e9e5dc;
+  color: #332f28;
+  cursor: pointer;
+  text-align: left;
+}
+
+.event-admin-summary-item strong,
+.event-admin-summary-item span {
+  display: block;
+}
+
+.event-admin-summary-item strong {
+  margin-bottom: 8px;
+  font-size: 1.45rem;
+}
+
+.event-admin-summary-item span {
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.event-admin-summary-item.is-active {
+  background: #242422;
+  color: #edcb70;
+  box-shadow: inset 0 0 0 2px #c99b32;
+}
+
+.event-admin-summary-item:focus-visible {
+  outline: 3px solid rgb(201 155 50 / 45%);
+  outline-offset: 2px;
+}
+
+.event-admin-create {
+  background: #242422;
+  color: #f7f3e8;
+}
+
+.event-admin-create > .admin-panel-heading h2 {
+  color: #f7f3e8;
+}
+
+.event-admin-create .event-reservation-form {
+  margin-top: 22px;
+  padding: 28px;
+  border-radius: 10px;
+  background: #f7f5f0;
+  color: #242321;
+}
+
+.event-admin-request-card .admin-card-actions {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.event-admin-legacy-grid {
+  margin-top: 20px;
+}
+
+.event-admin-legacy-card {
+  border-color: #d8d1c3;
+  background: #f4f1ea;
+}
+
+.event-admin-legacy-card h4 {
+  margin: 0 0 8px;
+  color: #332f28;
+}
+
+.event-admin-legacy-note {
+  margin-top: 18px;
+  color: #6a6459;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
 @media (max-width: 900px) {
   .event-hall-card {
     grid-template-columns: 1fr;
@@ -4526,6 +4825,10 @@ textarea {
 
   .event-detail-layout {
     grid-template-columns: 1fr;
+  }
+
+  .event-admin-summary {
+    grid-template-columns: repeat(4, minmax(132px, 1fr));
   }
 }
 
@@ -4624,6 +4927,40 @@ textarea {
 
   .admin-event-form-wrap {
     padding: 18px 12px;
+  }
+
+  .event-portal-shell {
+    padding: 112px 14px 48px;
+  }
+
+  .event-portal-access,
+  .event-portal-status,
+  .event-portal-action {
+    padding: 22px 16px;
+  }
+
+  .event-portal-access h1,
+  .event-portal-status h1,
+  .event-portal-action h2 {
+    font-size: 2.15rem;
+    line-height: 1.06;
+  }
+
+  .event-portal-status-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .event-status-badge {
+    max-width: none;
+  }
+
+  .event-admin-summary {
+    grid-template-columns: repeat(2, minmax(138px, 1fr));
+  }
+
+  .event-admin-create .event-reservation-form {
+    padding: 20px 14px;
   }
 }
 

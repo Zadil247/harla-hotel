@@ -1,6 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
-import { Buffer } from "node:buffer";
-import { requestingAdmin } from "../server/admin-auth.js";
+import { requestingEventAdmin } from "../server/admin-auth.js";
+import { bookingForPortal, signedEventConfirmation } from "../server/event-booking-service.js";
 import { ensureEventHallConfirmationPdf } from "../server/event-confirmation-service.js";
 import { getSupabaseAdmin } from "../server/supabase-admin.js";
 
@@ -14,12 +13,6 @@ class EventConfirmationError extends Error {
 
 function clean(value) {
   return String(value || "").trim();
-}
-
-function sameSecret(left, right) {
-  const leftBuffer = Buffer.from(clean(left));
-  const rightBuffer = Buffer.from(clean(right));
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 async function requestJson(request) {
@@ -45,14 +38,14 @@ export default {
     try {
       const body = await requestJson(request);
       const bookingReference = clean(body.bookingReference).toUpperCase();
-      const submissionToken = clean(body.submissionToken);
+      const portalToken = clean(body.portalToken);
 
       if (!/^HARLA-HALL-\d{4}-\d{4,}$/.test(bookingReference)) {
         throw new EventConfirmationError("A valid event hall booking reference is required.");
       }
 
       const supabase = getSupabaseAdmin();
-      const adminUser = await requestingAdmin(supabase, request);
+      const adminUser = await requestingEventAdmin(supabase, request);
       const { data: booking, error } = await supabase
         .from("event_hall_bookings")
         .select("*")
@@ -66,9 +59,7 @@ export default {
         throw new EventConfirmationError("Event hall booking was not found.", 404);
       }
 
-      const publicOwner = booking.booking_source === "WEBSITE"
-        && /^[0-9a-f-]{36}$/i.test(submissionToken)
-        && sameSecret(booking.submission_token, submissionToken);
+      const publicOwner = adminUser ? null : await bookingForPortal(supabase, bookingReference, portalToken);
       if (!adminUser && !publicOwner) {
         throw new EventConfirmationError("Event hall booking was not found.", 404);
       }
@@ -76,9 +67,27 @@ export default {
         throw new EventConfirmationError("Admin access is required to regenerate an official confirmation.", 403);
       }
 
-      const confirmation = await ensureEventHallConfirmationPdf(supabase, booking, {
-        force: Boolean(body.regenerate && adminUser),
-      });
+      if (!["confirmed", "completed"].includes(String(booking.status || "").toLowerCase())) {
+        throw new EventConfirmationError("The official confirmation is available after the reservation is confirmed.", 409);
+      }
+
+      let confirmation;
+      if (adminUser) {
+        confirmation = await ensureEventHallConfirmationPdf(supabase, booking, {
+          force: Boolean(body.regenerate),
+        });
+      } else {
+        const signedUrl = await signedEventConfirmation(supabase, booking);
+        if (!signedUrl) {
+          throw new EventConfirmationError("The official confirmation is being prepared. Please try again shortly.", 409);
+        }
+        confirmation = {
+          generated: false,
+          fileName: `Harla-Hotel-Hall-Booking-${booking.booking_reference}.pdf`,
+          pdfPath: booking.confirmation_pdf_path,
+          signedUrl,
+        };
+      }
 
       return Response.json(
         {

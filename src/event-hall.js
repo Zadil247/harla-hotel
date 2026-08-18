@@ -1,4 +1,4 @@
-import { Footer, Navbar, ServiceCard } from "./components.js?v=20260815-event-hall-v1";
+import { Footer, Navbar, ServiceCard } from "./components.js?v=20260818-event-request-v5";
 import {
   culturalPhotoRoom,
   eventGallery,
@@ -7,7 +7,7 @@ import {
   services,
   siteConfig,
   whatsappLinks,
-} from "./data.js?v=20260815-event-hall-v1";
+} from "./data.js?v=20260818-event-request-v5";
 import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260815-event-hall-v1";
 import { getEventHalls, isBackendReady } from "./supabase-api.js?v=20260815-event-hall-v1";
 
@@ -134,12 +134,12 @@ function render() {
         <div class="event-corporate-actions">
           <a class="btn btn-primary" href="./event-booking.html">Start Event Hall Booking</a>
           <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>
-          <a href="mailto:${siteConfig.email}">${siteConfig.email}</a>
+          <a href="mailto:${siteConfig.eventsEmail}">${siteConfig.eventsEmail}</a>
         </div>
       </section>
     </main>
     ${LightboxMarkup("Harla Hotel event image viewer")}
-    ${Footer()}
+    ${Footer({ email: siteConfig.eventsEmail })}
   `;
 
   wirePage();
