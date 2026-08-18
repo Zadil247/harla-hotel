@@ -1,12 +1,14 @@
-import { Footer, Navbar } from "./components.js?v=20260521-room-automation";
-import {
-  backendSetupMessage,
-  getRoomBookingStatus,
-  isBackendReady,
-} from "./supabase-api.js?v=20260728-secure-status-v2";
+import { Footer, Navbar } from "./components.js?v=20260818-room-workflow-v2";
+import { lookupRoomBookingStatus } from "./room-api.js?v=20260818-room-workflow-v2";
+import { backendSetupMessage, isBackendReady } from "./supabase-api.js?v=20260818-room-workflow-v2";
 
 const app = document.querySelector("#booking-status-app");
-const initialBookingNumber = new URLSearchParams(window.location.search).get("booking") || "";
+const params = new URLSearchParams(window.location.search);
+const initialBookingNumber = params.get("booking") || "";
+const refreshIntervalMs = 20_000;
+let currentBooking = null;
+let refreshTimer = null;
+let lookupInProgress = false;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -17,30 +19,35 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function formatDate(value) {
-  if (!value) {
-    return "-";
-  }
-
+function formatDate(value, includeTime = false) {
+  if (!value) return "-";
+  const source = String(value).includes("T") ? new Date(value) : new Date(`${value}T12:00:00+03:00`);
   return new Intl.DateTimeFormat("en-ET", {
     dateStyle: "medium",
-  }).format(new Date(`${value}`.includes("T") ? value : `${value}T00:00:00`));
-}
-
-function formatDateTime(value) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("en-ET", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+    ...(includeTime ? { timeStyle: "short" } : {}),
+    timeZone: "Africa/Addis_Ababa",
+  }).format(source);
 }
 
 function humanizeStatus(value) {
-  const text = String(value || "pending").replaceAll("_", " ").trim();
-  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : "Pending";
+  const labels = {
+    pending: "Pending Review",
+    pending_review: "Pending Review",
+    pending_payment_review: "Payment Pending Verification",
+    pending_payment_confirmation: "Payment Pending Verification",
+    submitted_for_verification: "Payment Pending Verification",
+    approved: "Confirmed",
+    confirmed: "Confirmed",
+    checked_in: "Checked In",
+    checked_out: "Checked Out",
+    verified: "Payment Verified",
+    paid: "Paid",
+    declined: "Declined",
+    rejected: "Declined",
+    cancelled: "Cancelled",
+  };
+  const normalized = String(value || "pending").trim().toLowerCase();
+  return labels[normalized] || normalized.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function resultState(booking) {
@@ -49,39 +56,34 @@ function resultState(booking) {
 
   if (bookingStatus === "cancelled" || paymentStatus === "cancelled") {
     return {
-      badge: "Booking Cancelled",
+      badge: "Cancelled",
       title: "Booking Cancelled",
-      message: "This booking is no longer active. Please contact Harla Hotel if you would like help arranging another stay.",
+      message: "This booking is no longer active. Please contact our Reservations Team if you would like help arranging another stay.",
       tone: "cancelled",
     };
   }
-
-  if (bookingStatus === "declined" || bookingStatus === "rejected") {
+  if (["declined", "rejected"].includes(bookingStatus)) {
     return {
-      badge: "Booking Declined",
-      title: "Booking Declined",
-      message: "Harla Hotel was unable to approve this booking request. Review the information below or contact our reservations team.",
+      badge: "Not Approved",
+      title: "Booking Not Approved",
+      message: "Harla Hotel was unable to approve this booking request. Review the reason below or contact our Reservations Team.",
       tone: "declined",
     };
   }
-
-  if (bookingStatus === "confirmed" || bookingStatus === "approved") {
+  if (["confirmed", "approved", "checked_in", "checked_out"].includes(bookingStatus)) {
     return {
-      badge: "Booking Approved",
-      title: "Booking Approved",
-      message: "Your stay has been approved by Harla Hotel. We look forward to welcoming you.",
+      badge: "Confirmed",
+      title: "Booking Confirmed",
+      message: "Your stay has been confirmed by Harla Hotel. We look forward to welcoming you.",
       tone: "approved",
     };
   }
-
-  if (
-    [
-      "pending_payment_confirmation",
-      "pending_payment_review",
-      "pending_verification",
-      "submitted_for_verification",
-    ].includes(paymentStatus)
-  ) {
+  if ([
+    "pending_payment_confirmation",
+    "pending_payment_review",
+    "pending_verification",
+    "submitted_for_verification",
+  ].includes(paymentStatus)) {
     return {
       badge: "Payment Review",
       title: "Payment Proof Awaiting Verification",
@@ -89,13 +91,22 @@ function resultState(booking) {
       tone: "payment",
     };
   }
-
   return {
     badge: "Under Review",
     title: "Booking Under Review",
-    message: "Your booking request has been received and is currently being reviewed by Harla Hotel.",
+    message: "Your booking request has been received and Harla Hotel is currently reviewing it. We will update your booking status as soon as the review is complete.",
     tone: "review",
   };
+}
+
+function contactBlock() {
+  return `
+    <p class="booking-status-contact">
+      For more information, contact our Reservations Team:<br />
+      <a href="mailto:booking@harlahotel.com">booking@harlahotel.com</a><br />
+      <a href="tel:+251915321188">+251 915 321 188</a>
+    </p>
+  `;
 }
 
 function renderMessageState({ badge, title, message, tone, allowRetry = true }) {
@@ -104,18 +115,19 @@ function renderMessageState({ badge, title, message, tone, allowRetry = true }) 
       <span class="booking-status-badge">${escapeHtml(badge)}</span>
       <h2>${escapeHtml(title)}</h2>
       <p>${escapeHtml(message)}</p>
-      ${
-        allowRetry
-          ? `<button class="btn btn-outline status-check-again" type="button" data-check-again>Check Again</button>`
-          : ""
-      }
+      ${allowRetry ? `<button class="btn btn-outline status-check-again" type="button" data-check-again>Check Again</button>` : ""}
     </section>
   `;
 }
 
 function renderResult(booking) {
   const state = resultState(booking);
-  const approved = state.tone === "approved";
+  const confirmed = state.tone === "approved";
+  const confirmationAction = confirmed
+    ? booking.confirmation_pdf_url
+      ? `<a class="btn btn-primary" href="${escapeHtml(booking.confirmation_pdf_url)}" target="_blank" rel="noopener">Download Confirmation PDF</a>`
+      : `<p class="booking-status-pdf-note">Your official confirmation PDF is being prepared. Refresh your status shortly.</p>`
+    : "";
 
   return `
     <section class="booking-status-result-card status-state-${state.tone}">
@@ -133,25 +145,16 @@ function renderResult(booking) {
         <div><dt>Guests</dt><dd>${escapeHtml(booking.guests)}</dd></div>
         <div><dt>Payment status</dt><dd>${escapeHtml(humanizeStatus(booking.payment_status))}</dd></div>
         <div><dt>Booking status</dt><dd>${escapeHtml(humanizeStatus(booking.status))}</dd></div>
-        ${
-          state.tone === "declined" && booking.decline_reason
-            ? `<div><dt>Decline reason</dt><dd>${escapeHtml(booking.decline_reason)}</dd></div>`
-            : ""
-        }
-        ${
-          approved && booking.confirmed_at
-            ? `<div><dt>Confirmation date</dt><dd>${formatDateTime(booking.confirmed_at)}</dd></div>`
-            : ""
-        }
+        ${state.tone === "declined" && booking.decline_reason ? `<div><dt>Reason</dt><dd>${escapeHtml(booking.decline_reason)}</dd></div>` : ""}
+        ${confirmed && booking.confirmed_at ? `<div><dt>Confirmation date</dt><dd>${formatDate(booking.confirmed_at, true)}</dd></div>` : ""}
       </dl>
+      ${state.tone !== "approved" || !booking.confirmation_pdf_url ? contactBlock() : ""}
       <div class="booking-status-result-actions">
+        <button class="btn btn-outline" type="button" data-refresh-status>Refresh Status</button>
         <button class="btn btn-outline status-check-again" type="button" data-check-again>Check Again</button>
-        ${
-          approved
-            ? `<button class="btn btn-primary" type="button" data-download-booking-pdf>Download Confirmation PDF</button>`
-            : ""
-        }
+        ${confirmationAction}
       </div>
+      <p class="booking-status-auto-refresh" aria-live="polite">Status refreshes securely every 20 seconds while this result is open.</p>
     </section>
   `;
 }
@@ -164,45 +167,18 @@ app.innerHTML = `
       <h1 id="booking-status-title">Check Booking Status</h1>
       <p>Enter the same full name used during booking and your Harla Hotel booking reference to view your current status securely.</p>
     </section>
-
     <section class="booking-status-card" aria-label="Room booking status lookup">
       <form class="booking-status-form" id="booking-status-form">
         <div class="form-grid">
-          <label>
-            Full Name
-            <input
-              name="fullName"
-              type="text"
-              autocomplete="name"
-              placeholder="John Doe Smith"
-              minlength="2"
-              maxlength="200"
-              required
-            />
-          </label>
-          <label>
-            Booking Reference
-            <input
-              name="bookingNumber"
-              type="text"
-              value="${escapeHtml(initialBookingNumber)}"
-              placeholder="HRB-XXXXXX"
-              minlength="6"
-              maxlength="80"
-              autocapitalize="characters"
-              required
-            />
-          </label>
+          <label>Full Name<input name="fullName" type="text" autocomplete="name" placeholder="John Doe Smith" minlength="2" maxlength="160" required /></label>
+          <label>Booking Reference<input name="bookingNumber" type="text" value="${escapeHtml(initialBookingNumber)}" placeholder="HRB-XXXXXX" minlength="10" maxlength="40" autocapitalize="characters" required /></label>
         </div>
         <button class="btn btn-primary booking-status-submit" type="submit">Check Booking Status</button>
         <p class="form-status" role="status" aria-live="polite"></p>
       </form>
       <div id="booking-status-result" aria-live="polite"></div>
     </section>
-    <p class="booking-status-help">
-      Need help? Contact Harla Hotel at
-      <a href="tel:+251915321188">+251 915 321 188</a>.
-    </p>
+    <p class="booking-status-help">Need help? Contact <a href="mailto:booking@harlahotel.com">booking@harlahotel.com</a> or <a href="tel:+251915321188">+251 915 321 188</a>.</p>
   </main>
   ${Footer()}
 `;
@@ -214,56 +190,51 @@ const form = document.querySelector("#booking-status-form");
 const result = document.querySelector("#booking-status-result");
 const submitButton = form.querySelector(".booking-status-submit");
 const defaultSubmitText = submitButton.textContent;
-let currentBooking = null;
 
-function setHeaderState() {
-  header.classList.toggle("is-scrolled", window.scrollY > 20);
+function stopRefresh() {
+  if (refreshTimer) window.clearInterval(refreshTimer);
+  refreshTimer = null;
 }
 
-function closeMenu() {
-  navToggle.setAttribute("aria-expanded", "false");
-  navMenu.classList.remove("is-open");
+function startRefresh() {
+  stopRefresh();
+  refreshTimer = window.setInterval(() => lookupBooking({ background: true }), refreshIntervalMs);
 }
 
-async function lookupBooking() {
+async function lookupBooking({ background = false } = {}) {
+  if (lookupInProgress) return;
   const status = form.querySelector(".form-status");
-  const formData = new FormData(form);
-  const fullName = formData.get("fullName");
-  const bookingNumber = formData.get("bookingNumber");
-
-  if (!fullName?.trim() || !bookingNumber?.trim()) {
+  const data = Object.fromEntries(new FormData(form).entries());
+  if (!data.fullName?.trim() || !data.bookingNumber?.trim()) {
     status.textContent = "Please enter your full name and booking reference.";
     return;
   }
-
   if (!isBackendReady()) {
     const message = backendSetupMessage();
     status.textContent = message;
-    result.innerHTML = renderMessageState({
-      badge: "Unavailable",
-      title: "Generic Error",
-      message,
-      tone: "error",
-    });
+    result.innerHTML = renderMessageState({ badge: "Unavailable", title: "Unable to Check Status", message, tone: "error" });
     return;
   }
 
   try {
+    lookupInProgress = true;
     form.setAttribute("aria-busy", "true");
     submitButton.disabled = true;
-    submitButton.textContent = "Checking...";
-    status.textContent = "Securely checking your booking...";
-    result.innerHTML = renderMessageState({
-      badge: "Loading",
-      title: "Checking Booking Status",
-      message: "Please wait while we securely match your name and booking reference.",
-      tone: "loading",
-      allowRetry: false,
-    });
+    if (!background) {
+      submitButton.textContent = "Checking...";
+      status.textContent = "Securely checking your booking...";
+      result.innerHTML = renderMessageState({
+        badge: "Loading",
+        title: "Checking Booking Status",
+        message: "Please wait while we securely match your name and booking reference.",
+        tone: "loading",
+        allowRetry: false,
+      });
+    }
 
-    currentBooking = await getRoomBookingStatus(bookingNumber, fullName);
-
+    currentBooking = await lookupRoomBookingStatus(data.bookingNumber, data.fullName);
     if (!currentBooking) {
+      stopRefresh();
       result.innerHTML = renderMessageState({
         badge: "Not Found",
         title: "Booking Not Found",
@@ -275,59 +246,55 @@ async function lookupBooking() {
     }
 
     result.innerHTML = renderResult(currentBooking);
-    status.textContent = "Booking status loaded securely.";
+    status.textContent = background ? "Status refreshed." : "Booking status loaded securely.";
+    startRefresh();
   } catch (error) {
-    console.error("Room booking status lookup failed.", error);
-    result.innerHTML = renderMessageState({
-      badge: "Unable to Check",
-      title: "Generic Error",
-      message: "We could not check your booking right now. Please try again shortly or contact Harla Hotel.",
-      tone: "error",
-    });
-    status.textContent = "Could not check this booking right now.";
+    if (!background) {
+      console.error("Room booking status lookup failed.", error);
+      result.innerHTML = renderMessageState({
+        badge: "Unable to Check",
+        title: "Unable to Check Status",
+        message: "We could not check your booking right now. Please try again shortly or contact Harla Hotel.",
+        tone: "error",
+      });
+      status.textContent = "Could not check this booking right now.";
+    }
   } finally {
+    lookupInProgress = false;
     form.removeAttribute("aria-busy");
     submitButton.disabled = false;
     submitButton.textContent = defaultSubmitText;
   }
 }
 
-navToggle.addEventListener("click", () => {
+navToggle?.addEventListener("click", () => {
   const expanded = navToggle.getAttribute("aria-expanded") === "true";
   navToggle.setAttribute("aria-expanded", String(!expanded));
-  navMenu.classList.toggle("is-open");
+  navMenu?.classList.toggle("is-open");
 });
-
-document.querySelectorAll("[data-nav-menu] a").forEach((link) => {
-  link.addEventListener("click", closeMenu);
-});
-
+document.querySelectorAll("[data-nav-menu] a").forEach((link) => link.addEventListener("click", () => {
+  navToggle?.setAttribute("aria-expanded", "false");
+  navMenu?.classList.remove("is-open");
+}));
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   lookupBooking();
 });
-
-result.addEventListener("click", async (event) => {
+result.addEventListener("click", (event) => {
+  if (event.target.closest("[data-refresh-status]")) {
+    lookupBooking();
+    return;
+  }
   if (event.target.closest("[data-check-again]")) {
+    stopRefresh();
     currentBooking = null;
     result.innerHTML = "";
     form.querySelector(".form-status").textContent = "";
     form.reset();
     form.querySelector("[name='fullName']")?.focus();
-    return;
   }
-
-  if (!event.target.closest("[data-download-booking-pdf]") || !currentBooking) {
-    return;
-  }
-
-  const { downloadBookingConfirmationPdf } = await import("./booking-confirmation-pdf.js?v=20260521-room-automation");
-  await downloadBookingConfirmationPdf(currentBooking);
 });
-
-window.addEventListener("scroll", setHeaderState, { passive: true });
-setHeaderState();
-
-if (initialBookingNumber) {
-  form.querySelector("[name='fullName']")?.focus();
-}
+window.addEventListener("beforeunload", stopRefresh);
+window.addEventListener("scroll", () => header?.classList.toggle("is-scrolled", window.scrollY > 20), { passive: true });
+header?.classList.toggle("is-scrolled", window.scrollY > 20);
+if (initialBookingNumber) form.querySelector("[name='fullName']")?.focus();

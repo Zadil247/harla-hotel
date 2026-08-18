@@ -1,13 +1,13 @@
-import { Navbar } from "./components.js?v=20260521-room-automation";
-import { images, siteConfig } from "./data.js?v=20260521-room-automation";
+import { Navbar } from "./components.js?v=20260818-room-workflow-v2";
+import { images, siteConfig } from "./data.js?v=20260818-room-workflow-v2";
 import {
   backendSetupMessage,
   getAdminSession,
-  getCurrentAdminProfile,
   isBackendReady,
   signInAdmin,
   signOutAdmin,
-} from "./supabase-api.js?v=20260521-room-automation";
+} from "./supabase-api.js?v=20260818-room-workflow-v2";
+import { requireRoomAdminAccess } from "./room-api.js?v=20260818-room-workflow-v2";
 
 const app = document.querySelector("#admin-login-app");
 const params = new URLSearchParams(window.location.search);
@@ -16,8 +16,8 @@ const authTimeoutMs = 18000;
 
 const messageMap = {
   "signed-out": "Signed out successfully.",
-  "admin-required": "Please sign in with an active Harla Hotel admin account.",
-  "login-required": "Please sign in to access the Harla Hotel admin dashboard.",
+  "admin-required": "Please sign in with an active Harla Hotel Room Admin account.",
+  "login-required": "Please sign in to access the Harla Hotel Room Admin dashboard.",
 };
 
 function escapeHtml(value) {
@@ -54,9 +54,9 @@ function shell(content) {
     <main class="admin-shell" id="admin-login-main">
       <section class="admin-hero">
         <div>
-          <p class="eyebrow">Admin Login</p>
-          <h1>Harla Hotel Admin</h1>
-          <p>Sign in with Supabase email and password to manage bookings and customer requests.</p>
+          <p class="eyebrow">Room Admin Login</p>
+          <h1>Harla Hotel Room Admin</h1>
+          <p>Sign in with Supabase email and password to manage room requests, inventory, payments, and confirmations.</p>
         </div>
         <img src="${images.logo}" alt="${siteConfig.brandName} logo" />
       </section>
@@ -95,7 +95,7 @@ function renderSetupNotice() {
       <p>${backendSetupMessage()}</p>
       <p>
         After Supabase is configured, this page will use Supabase Auth email/password login
-        and redirect authenticated admins to the dashboard.
+        and redirect authenticated Room Admins to the room dashboard.
       </p>
     </section>
   `);
@@ -106,10 +106,10 @@ function renderLogin(message = "") {
     <section class="admin-login admin-card">
       <div>
         <p class="eyebrow">Protected Access</p>
-        <h2>Sign in as admin</h2>
+        <h2>Sign in as Room Admin</h2>
         <p>
-          Only Supabase Auth users listed as active records in <code>admin_users</code> can open the dashboard,
-          view bookings, and approve or reject requests.
+          Only Supabase Auth users listed as active records in <code>room_admin_users</code> can open this dashboard,
+          view room bookings, and approve or decline room requests.
         </p>
       </div>
       <form id="admin-login-form" class="booking-form">
@@ -143,11 +143,11 @@ function renderLogin(message = "") {
     try {
       status.textContent = "Signing in...";
       await signInAdmin(data.email, data.password);
-      const profile = await getCurrentAdminProfile();
+      const profile = await requireRoomAdminAccess();
 
       if (!profile) {
         await signOutAdmin();
-        status.textContent = "This account is not an active Harla Hotel admin.";
+        status.textContent = "This account is not an active Harla Hotel Room Admin.";
         return;
       }
 
@@ -174,7 +174,7 @@ async function initLogin() {
 
     if (session) {
       const profile = await withTimeout(
-        getCurrentAdminProfile(),
+        requireRoomAdminAccess(),
         "Supabase did not respond while checking this admin profile.",
       );
       if (profile) {

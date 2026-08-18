@@ -10,14 +10,16 @@ import {
 import { images, roomBookingTypes, siteConfig } from "./data.js?v=20260728-manual-payments";
 import { initImageLightbox, LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260702-booking-availability";
 import {
+  authorizeRoomBookingUploads,
+  cancelAuthorizedRoomUploads,
+  getDateAwareRoomAvailability,
+  submitRoomBookingWithHold,
+  uploadAuthorizedRoomFile,
+} from "./room-api.js?v=20260818-room-workflow-v2";
+import {
   backendSetupMessage,
   createBookingReference,
-  createRoomBooking,
-  getRoomInventory,
   isBackendReady,
-  subscribeRoomInventory,
-  uploadGovernmentId,
-  uploadRoomPaymentProof,
 } from "./supabase-api.js?v=20260728-manual-payments";
 
 const app = document.querySelector("#room-booking-app");
@@ -63,6 +65,8 @@ let inventoryByType = new Map(
     room.name,
     {
       room_type: room.name,
+      room_slug: room.slug,
+      price_per_night: room.pricePerNight,
       total_rooms: room.totalRooms,
       available_rooms: room.availableRooms,
     },
@@ -84,11 +88,11 @@ const state = {
   internationalQuote: null,
   internationalQuoteError: "",
   isQuoteLoading: false,
-  internationalBookingNumber: "",
-  governmentIdUpload: null,
   success: null,
   message: "",
   isSubmitting: false,
+  availabilityLoaded: false,
+  availabilityLoading: false,
 };
 
 function escapeHtml(value) {
@@ -351,6 +355,7 @@ function roomWithInventory(room) {
   const inventory = inventoryByType.get(room.name);
   return {
     ...room,
+    pricePerNight: Number(inventory?.price_per_night || room.pricePerNight),
     totalRooms: Number(inventory?.total_rooms ?? room.totalRooms),
     availableRooms: Number(inventory?.available_rooms ?? room.availableRooms),
   };
@@ -435,35 +440,43 @@ function stepper() {
 }
 
 function availabilityPercent(room) {
-  if (!room.totalRooms) {
+  if (!state.availabilityLoaded || !room.totalRooms) {
     return 0;
   }
   return Math.max(0, Math.min(100, (room.availableRooms / room.totalRooms) * 100));
 }
 
 function availabilityDisplay(room) {
-  const percent = Math.round(availabilityPercent(room));
-  return percent > 0 ? `Availability: ${percent}%` : "Booking unavailable. Please contact us.";
+  if (!state.availabilityLoaded) {
+    return "Select dates to check availability";
+  }
+  if (room.availableRooms <= 0) {
+    return "Sold out for these dates";
+  }
+  return room.availableRooms === 1
+    ? "Only 1 room left"
+    : `${room.availableRooms} rooms available`;
 }
 
 function roomCard(room) {
   const liveRoom = roomWithInventory(room);
-  const isAvailable = liveRoom.availableRooms > 0;
+  const datesReady = Boolean(state.details.checkIn && state.details.checkOut && state.availabilityLoaded);
+  const isAvailable = datesReady && liveRoom.availableRooms > 0;
   const isSelected = state.selectedRoomSlug === room.slug;
 
   return `
-    <article class="premium-room-card ${isSelected ? "is-selected" : ""} ${!isAvailable ? "is-unavailable" : ""}" data-room-card="${room.slug}" data-room-type="${room.name}">
+    <article class="premium-room-card ${isSelected ? "is-selected" : ""} ${datesReady && !isAvailable ? "is-unavailable" : ""}" data-room-card="${room.slug}" data-room-type="${room.name}">
       <div class="premium-room-media">
         ${LightboxImage(room.image, room.name, "room-type-lightbox-image")}
-        <span class="room-price-badge">${room.priceLabel}</span>
+        <span class="room-price-badge">${state.availabilityLoaded ? `${formatEtb(liveRoom.pricePerNight)} / night` : "Live rate after date check"}</span>
       </div>
       <div class="premium-room-body">
         <div class="premium-room-heading">
           <div>
-            <p class="card-kicker">${isAvailable ? "Available now" : "Fully booked"}</p>
+            <p class="card-kicker">${!datesReady ? "Choose stay dates" : isAvailable ? "Available for your stay" : "Sold out"}</p>
             <h3>${room.name}</h3>
           </div>
-          <strong>${formatEtb(room.pricePerNight)}</strong>
+          <strong>${state.availabilityLoaded ? formatEtb(liveRoom.pricePerNight) : "Live rate"}</strong>
         </div>
         <p>${room.description}</p>
         <ul class="amenities premium-amenities">
@@ -471,7 +484,7 @@ function roomCard(room) {
         </ul>
         <div class="premium-availability">
           <div>
-            <span>Live room status</span>
+            <span>Stay availability</span>
             <strong data-room-card-available>${availabilityDisplay(liveRoom)}</strong>
           </div>
           <div class="premium-availability-bar" aria-hidden="true">
@@ -481,6 +494,8 @@ function roomCard(room) {
         ${
           isAvailable
             ? `<button class="btn btn-primary" type="button" data-select-room="${room.slug}">Book This Room</button>`
+            : !datesReady
+              ? `<button class="btn btn-primary" type="button" disabled>Select Dates First</button>`
             : `
               <div class="room-unavailable-note">
                 <strong>Booking unavailable. Please contact us.</strong>
@@ -500,13 +515,28 @@ function selectionStep() {
     <section class="booking-step-panel" aria-labelledby="room-select-title">
       <div class="booking-panel-heading">
         <p class="eyebrow">Step 1</p>
-        <h2 id="room-select-title">Choose your room</h2>
-        <p>Select from Harla Hotel's live room inventory. Rooms with no availability cannot be booked online.</p>
+        <h2 id="room-select-title">Choose your dates and room</h2>
+        <p>Availability is calculated for your exact stay. Checkout day remains open for the next guest.</p>
       </div>
+      <form class="room-date-search" id="room-date-search-form">
+        <label>
+          Check-in date
+          <input name="checkIn" type="date" min="${todayIso()}" value="${escapeHtml(state.details.checkIn || "")}" required />
+        </label>
+        <label>
+          Check-out date
+          <input name="checkOut" type="date" min="${addDaysIso(state.details.checkIn || todayIso(), 1)}" value="${escapeHtml(state.details.checkOut || "")}" required />
+        </label>
+        <button class="btn btn-primary" type="submit" ${state.availabilityLoading ? "disabled" : ""}>
+          ${state.availabilityLoading ? "Checking..." : "Check Availability"}
+        </button>
+      </form>
       <div class="premium-room-grid">
         ${roomBookingTypes.map(roomCard).join("")}
       </div>
-      <p class="availability-status" data-room-booking-inventory-status role="status" aria-live="polite"></p>
+      <p class="availability-status" data-room-booking-inventory-status role="status" aria-live="polite">
+        ${state.availabilityLoaded ? "Availability shown for the selected dates." : "Choose check-in and check-out dates to view live room availability."}
+      </p>
     </section>
   `;
 }
@@ -524,7 +554,8 @@ function selectedRoomPanel() {
       <h3>${room.name}</h3>
       <p>${room.priceLabel}</p>
       <dl>
-        <div><dt>Live availability</dt><dd>${availabilityDisplay(room)}</dd></div>
+        <div><dt>Stay</dt><dd>${escapeHtml(state.details.checkIn || "-")} to ${escapeHtml(state.details.checkOut || "-")}</dd></div>
+        <div><dt>Date availability</dt><dd>${availabilityDisplay(room)}</dd></div>
         <div><dt>Included</dt><dd>${room.features.join(", ")}</dd></div>
       </dl>
       <button class="text-link" type="button" data-change-room>Change room</button>
@@ -534,8 +565,6 @@ function selectedRoomPanel() {
 
 function detailsStep() {
   const room = selectedRoom();
-  const minCheckIn = todayIso();
-  const minCheckOut = addDaysIso(state.details.checkIn || minCheckIn, 1);
 
   return `
     <section class="booking-step-panel booking-details-layout" aria-labelledby="guest-details-title">
@@ -551,6 +580,7 @@ function detailsStep() {
           <div class="locked-room-field">
             <span>Room type</span>
             <strong>${escapeHtml(room?.name || "Choose a room")}</strong>
+            <small>${escapeHtml(state.details.checkIn || "-")} to ${escapeHtml(state.details.checkOut || "-")}</small>
           </div>
           <div class="form-grid">
             <label class="booking-field">
@@ -587,14 +617,6 @@ function detailsStep() {
               <input name="dateOfBirth" type="date" max="${escapeHtml(todayIso())}" value="${escapeHtml(state.details.dateOfBirth || "")}" required />
             </label>
             ${nationalityFieldMarkup()}
-            <label>
-              Check-in date
-              <input name="checkIn" id="room-check-in" type="date" min="${escapeHtml(minCheckIn)}" value="${escapeHtml(state.details.checkIn || "")}" required />
-            </label>
-            <label>
-              Check-out date
-              <input name="checkOut" id="room-check-out" type="date" min="${escapeHtml(minCheckOut)}" value="${escapeHtml(state.details.checkOut || "")}" required />
-            </label>
             <label>
               Number of guests
               <input name="guests" type="number" min="1" value="${escapeHtml(state.details.guests || "1")}" required />
@@ -895,8 +917,8 @@ function successStep() {
   return `
     <section class="booking-step-panel booking-success-panel" aria-labelledby="booking-success-title">
       <p class="eyebrow">Booking Submitted</p>
-      <h2 id="booking-success-title">Thank you for choosing Harla Hotel.</h2>
-      <p>Your booking request and payment proof have been received and are pending verification.</p>
+      <h2 id="booking-success-title">Your booking request has been received.</h2>
+      <p>Harla Hotel is currently reviewing your request. Please keep your booking reference so you can check your status.</p>
       <dl class="booking-summary-list">
         <div><dt>Booking reference</dt><dd>${escapeHtml(state.success?.bookingNumber || "-")}</dd></div>
         <div><dt>Customer name</dt><dd>${escapeHtml(state.success?.customerName || "-")}</dd></div>
@@ -913,6 +935,11 @@ function successStep() {
         <a class="btn btn-primary" href="./booking-status.html?booking=${encodeURIComponent(state.success?.bookingNumber || "")}">Check Booking Status</a>
         <a class="btn btn-whatsapp" href="${buildWhatsAppHref(selectedRoom(), calculateNights(), currentTotal())}">Contact on WhatsApp</a>
       </div>
+      <p class="booking-success-contact">
+        Reservations: <a href="mailto:booking@harlahotel.com">booking@harlahotel.com</a>
+        <span aria-hidden="true">|</span>
+        <a href="tel:+251915321188">+251 915 321 188</a>
+      </p>
     </section>
   `;
 }
@@ -986,10 +1013,6 @@ function render() {
             <a class="btn btn-outline" href="./booking-status.html">Check Booking Status</a>
           </div>
         </div>
-        <div class="room-total-card reveal is-visible">
-          <strong data-total-rooms>Live</strong>
-          <span>Room status updates from Harla Hotel inventory</span>
-        </div>
       </section>
 
       <section class="section booking-flow-section" id="room-booking-flow" aria-label="Room booking flow">
@@ -1042,8 +1065,15 @@ async function refreshInventory() {
     state.message = backendSetupMessage();
     return [];
   }
+  if (!state.details.checkIn || !state.details.checkOut) {
+    state.availabilityLoaded = false;
+    return [];
+  }
 
-  const inventory = await getRoomInventory();
+  const inventory = await getDateAwareRoomAvailability(
+    state.details.checkIn,
+    state.details.checkOut,
+  );
   renderInventory(inventory, false);
   return inventory;
 }
@@ -1061,13 +1091,18 @@ function renderInventory(inventory, shouldRender = true) {
     inventory.map((room) => [
       room.room_type,
       {
+        room_slug: room.room_slug,
         room_type: room.room_type,
+        price_per_night: Number(room.price_per_night || 0),
         total_rooms: Number(room.total_rooms || 0),
         available_rooms: Number(room.available_rooms || 0),
+        sellable_rooms: Number(room.sellable_rooms ?? room.total_rooms ?? 0),
+        held_rooms: Number(room.held_rooms || 0),
         updated_at: room.updated_at,
       },
     ]),
   );
+  state.availabilityLoaded = true;
 
   if (selectedRoomBase() && !selectedAvailable() && state.step !== "select") {
     state.step = "select";
@@ -1080,16 +1115,40 @@ function renderInventory(inventory, shouldRender = true) {
 }
 
 async function loadInventory() {
-  if (!isBackendReady()) {
-    state.message = backendSetupMessage();
+  if (!state.details.checkIn || !state.details.checkOut) return;
+  try {
+    renderInventory(await getDateAwareRoomAvailability(state.details.checkIn, state.details.checkOut));
+  } catch (error) {
+    state.message = error.message || "Could not load room availability for those dates.";
     render();
+  }
+}
+
+async function checkAvailabilityDates(event) {
+  event?.preventDefault();
+  const form = event?.currentTarget || document.querySelector("#room-date-search-form");
+  const status = document.querySelector("[data-room-booking-inventory-status]");
+  const values = Object.fromEntries(new FormData(form).entries());
+  if (!values.checkIn || !values.checkOut || calculateNights(values.checkIn, values.checkOut) < 1) {
+    if (status) status.textContent = "Check-out date must be after check-in date.";
     return;
   }
 
+  state.details.checkIn = values.checkIn;
+  state.details.checkOut = values.checkOut;
+  state.availabilityLoading = true;
+  state.availabilityLoaded = false;
+  state.selectedRoomSlug = "";
+  state.message = "";
+  render();
   try {
-    renderInventory(await getRoomInventory());
+    renderInventory(await getDateAwareRoomAvailability(values.checkIn, values.checkOut));
   } catch (error) {
-    state.message = error.message || "Could not load room availability.";
+    state.availabilityLoaded = false;
+    state.message = error.message || "Could not check room availability for those dates.";
+    render();
+  } finally {
+    state.availabilityLoading = false;
     render();
   }
 }
@@ -1101,6 +1160,11 @@ function selectRoom(slug) {
   }
 
   const liveRoom = roomWithInventory(room);
+  if (!state.availabilityLoaded || !state.details.checkIn || !state.details.checkOut) {
+    state.message = "Choose your check-in and check-out dates before selecting a room.";
+    render();
+    return;
+  }
   if (liveRoom.availableRooms < 1) {
     state.message = `${liveRoom.name} is currently unavailable. Please contact ${siteConfig.phone} or ${siteConfig.email}.`;
     render();
@@ -1214,7 +1278,7 @@ async function handleDetailsSubmit(event) {
   const governmentIdFile = uploadedGovernmentId?.name
     ? uploadedGovernmentId
     : state.details.governmentIdFile;
-  const details = Object.fromEntries(formData.entries());
+  const details = { ...state.details, ...Object.fromEntries(formData.entries()) };
   delete details.governmentId;
   const selectedPhoneCountry = findCountry(details.phoneCountryCode);
   const nationalPhone = nationalPhoneForCountry(details.phoneNationalNumber, selectedPhoneCountry);
@@ -1265,8 +1329,6 @@ async function handleDetailsSubmit(event) {
     };
     state.internationalQuote = null;
     state.internationalQuoteError = "";
-    state.internationalBookingNumber = "";
-    state.governmentIdUpload = null;
     state.step = "confirm";
     state.message = "";
     render();
@@ -1359,99 +1421,6 @@ async function loadInternationalQuote() {
   }
 }
 
-async function ensureGovernmentIdUploaded(bookingNumber, status) {
-  if (
-    state.governmentIdUpload?.bookingNumber === bookingNumber &&
-    state.governmentIdUpload?.path
-  ) {
-    return state.governmentIdUpload;
-  }
-
-  status.textContent = "Uploading your government ID securely...";
-  const upload = await uploadGovernmentId(
-    state.details.governmentIdFile,
-    bookingNumber,
-  );
-  state.governmentIdUpload = {
-    ...upload,
-    bookingNumber,
-  };
-  return state.governmentIdUpload;
-}
-
-async function startInternationalCheckout() {
-  if (state.isSubmitting || nationalityIsEthiopian()) {
-    return;
-  }
-
-  const status = document.querySelector(".form-status");
-  const button = document.querySelector("[data-start-stripe-checkout]");
-
-  try {
-    state.isSubmitting = true;
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Opening Secure Checkout...";
-    }
-    status.textContent = "Checking live room availability...";
-    await refreshInventory();
-
-    const room = selectedRoom();
-    if (!room || room.availableRooms < 1) {
-      state.step = "select";
-      state.message =
-        "This room is no longer available. Please choose another room type.";
-      render();
-      return;
-    }
-
-    const bookingNumber =
-      state.internationalBookingNumber || createBookingReference();
-    state.internationalBookingNumber = bookingNumber;
-    const governmentId = await ensureGovernmentIdUploaded(bookingNumber, status);
-
-    status.textContent = "Creating your secure Stripe Checkout session...";
-    const checkout = await paymentApiJson("/api/create-checkout-session", {
-      method: "POST",
-      body: JSON.stringify({
-        ...state.details,
-        bookingNumber,
-        roomType: room.name,
-        roomSlug: room.slug,
-        message: bookingMessage(state.details),
-        governmentIdPath: governmentId.path,
-        governmentIdFileName: governmentId.fileName,
-        governmentIdMimeType: governmentId.mimeType,
-        governmentIdFileSize: governmentId.fileSize,
-        governmentIdUploadedAt: governmentId.uploadedAt,
-      }),
-    });
-
-    const checkoutUrl = new URL(checkout.checkoutUrl);
-    if (
-      checkoutUrl.protocol !== "https:" ||
-      !(
-        checkoutUrl.hostname === "checkout.stripe.com" ||
-        checkoutUrl.hostname.endsWith(".stripe.com")
-      )
-    ) {
-      throw new Error("The secure checkout URL could not be verified.");
-    }
-
-    window.location.assign(checkoutUrl.href);
-  } catch (error) {
-    status.textContent =
-      error.message ||
-      "Secure card checkout could not be opened. Please try again or contact Harla Hotel.";
-  } finally {
-    state.isSubmitting = false;
-    if (button && document.contains(button)) {
-      button.disabled = !state.internationalQuote;
-      button.textContent = "Continue to Secure Checkout";
-    }
-  }
-}
-
 function validatePaymentProof(file, allowPdf = false) {
   if (!file?.name) {
     return "Please upload your payment confirmation or proof of transfer.";
@@ -1475,6 +1444,18 @@ function validatePaymentProof(file, allowPdf = false) {
   }
 
   return "";
+}
+
+function paymentProofMimeType(file) {
+  const extension = String(file?.name || "").split(".").pop()?.toLowerCase();
+  const extensionTypes = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+  };
+  return file?.type || extensionTypes[extension] || "";
 }
 
 function validatePayment(file, payment) {
@@ -1534,6 +1515,7 @@ async function handlePaymentSubmit(event) {
   const payment = Object.fromEntries(formData.entries());
   const isEthiopianGuest = nationalityIsEthiopian();
   const validationMessage = validatePayment(paymentProof, payment);
+  let uploadAuthorizationToken = "";
 
   if (validationMessage) {
     status.textContent = validationMessage;
@@ -1558,19 +1540,6 @@ async function handlePaymentSubmit(event) {
     }
 
     const bookingNumber = createBookingReference();
-    status.textContent = "Step 1 of 3: uploading government ID securely...";
-    const governmentId = await ensureGovernmentIdUploaded(bookingNumber, status);
-
-    let paymentScreenshotUrl = "";
-    if (paymentProof && paymentProof.name) {
-      status.textContent = "Step 2 of 3: uploading payment proof securely...";
-      paymentScreenshotUrl = await uploadRoomPaymentProof(
-        paymentProof,
-        bookingNumber,
-      );
-    }
-
-    status.textContent = "Step 3 of 3: saving your pending booking request...";
     const total = currentTotal();
     const quote = isEthiopianGuest ? null : state.internationalQuote;
     const paymentMethod = isEthiopianGuest
@@ -1580,8 +1549,9 @@ async function handlePaymentSubmit(event) {
     const amountSubmitted = isEthiopianGuest
       ? total
       : Number(payment.amountTransferredUsd);
-    const result = await createRoomBooking({
-      ...state.details,
+    const { governmentIdFile, ...guestDetails } = state.details;
+    const bookingDraft = {
+      ...guestDetails,
       roomType: room.name,
       roomSlug: room.slug,
       roomName: room.name,
@@ -1595,7 +1565,6 @@ async function handlePaymentSubmit(event) {
       paymentCurrency,
       paymentMethod,
       paymentReference: payment.paymentReference,
-      paymentScreenshotUrl,
       paymentStatus: "pending_payment_confirmation",
       message: bookingMessage(state.details, {
         paymentMethod,
@@ -1603,15 +1572,36 @@ async function handlePaymentSubmit(event) {
         paymentDate: payment.paymentDate,
         amountTransferredUsd: payment.amountTransferredUsd,
       }),
-      governmentIdPath: governmentId.path,
-      governmentIdFileName: governmentId.fileName,
-      governmentIdMimeType: governmentId.mimeType,
-      governmentIdFileSize: governmentId.fileSize,
-      governmentIdUploadedAt: governmentId.uploadedAt,
+    };
+
+    status.textContent = "Step 1 of 4: authorizing private uploads...";
+    const authorization = await authorizeRoomBookingUploads(bookingDraft, {
+      governmentId: {
+        fileName: governmentIdFile.name,
+        mimeType: governmentIdMimeType(governmentIdFile),
+        fileSize: governmentIdFile.size,
+      },
+      paymentProof: {
+        fileName: paymentProof.name,
+        mimeType: paymentProofMimeType(paymentProof),
+        fileSize: paymentProof.size,
+      },
     });
+    uploadAuthorizationToken = authorization.authorizationToken;
+
+    status.textContent = "Step 2 of 4: uploading government ID securely...";
+    await uploadAuthorizedRoomFile(authorization.uploads.governmentId, governmentIdFile);
+    status.textContent = "Step 3 of 4: uploading payment proof securely...";
+    await uploadAuthorizedRoomFile(authorization.uploads.paymentProof, paymentProof);
+    status.textContent = "Step 4 of 4: verifying files and saving your pending request...";
+    const result = await submitRoomBookingWithHold(
+      bookingDraft,
+      uploadAuthorizationToken,
+    );
+    uploadAuthorizationToken = "";
 
     state.success = {
-      bookingNumber: result.booking_number,
+      bookingNumber: result.bookingNumber,
       customerName: state.details.fullName,
       roomName: room.name,
       checkIn: state.details.checkIn,
@@ -1631,6 +1621,9 @@ async function handlePaymentSubmit(event) {
     await loadInventory();
     scrollToFlow();
   } catch (error) {
+    if (uploadAuthorizationToken) {
+      await cancelAuthorizedRoomUploads(uploadAuthorizationToken).catch(() => {});
+    }
     status.textContent = error.message || "Sorry, we could not save your room request. Please try WhatsApp.";
   } finally {
     state.isSubmitting = false;
@@ -1853,6 +1846,13 @@ function bindPageEvents() {
   document.querySelector("[data-confirm-price]")?.addEventListener("click", confirmPrice);
   document.querySelector("#guest-details-form")?.addEventListener("submit", handleDetailsSubmit);
   document.querySelector("#payment-form")?.addEventListener("submit", handlePaymentSubmit);
+  document.querySelector("#room-date-search-form")?.addEventListener("submit", checkAvailabilityDates);
+  document.querySelector("#room-date-search-form [name='checkIn']")?.addEventListener("change", (event) => {
+    const checkOut = document.querySelector("#room-date-search-form [name='checkOut']");
+    if (!checkOut) return;
+    checkOut.min = addDaysIso(event.target.value, 1);
+    if (checkOut.value && checkOut.value <= event.target.value) checkOut.value = "";
+  });
   document
     .querySelector("[data-retry-international-quote]")
     ?.addEventListener("click", loadInternationalQuote);
@@ -1995,6 +1995,18 @@ function bindPageEvents() {
 render();
 loadInventory();
 
-if (isBackendReady()) {
-  subscribeRoomInventory((inventory) => renderInventory(inventory)).catch(() => {});
-}
+window.setInterval(async () => {
+  if (
+    state.step !== "select"
+    || !state.details.checkIn
+    || !state.details.checkOut
+    || state.availabilityLoading
+  ) return;
+  try {
+    renderInventory(
+      await getDateAwareRoomAvailability(state.details.checkIn, state.details.checkOut),
+    );
+  } catch {
+    // Keep the last known availability. The next manual check remains available.
+  }
+}, 20_000);

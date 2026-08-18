@@ -134,6 +134,8 @@ const server = createServer(async (request, response) => {
     "/api/event-request": "../api/event-request.js",
     "/api/event-portal": "../api/event-portal.js",
     "/api/event-admin": "../api/event-admin.js",
+    "/api/room-booking": "../api/room-booking.js",
+    "/api/room-admin": "../api/room-admin.js",
   };
   if (request.method === "POST" && eventApiModules[requestUrl.pathname]) {
     const chunks = [];

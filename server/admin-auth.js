@@ -71,3 +71,48 @@ export async function requestingEventAdmin(supabase, request) {
 
   return admin ? { ...data.user, eventAdminRole: admin.role } : null;
 }
+
+export async function requestingRoomAdmin(supabase, request) {
+  const authorization = request.headers.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+
+  if (!token) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return null;
+  }
+
+  const { data: admin, error: adminError } = await supabase
+    .from("room_admin_users")
+    .select("user_id, active, role")
+    .eq("user_id", data.user.id)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (adminError) {
+    console.error("Harla Room Admin authorization lookup failed", {
+      code: adminError.code || "unknown_database_error",
+      message: adminError.message || "The room_admin_users query failed.",
+    });
+    const diagnostic = new Error("Harla Room Admin authorization lookup failed.", {
+      cause: adminError,
+    });
+    diagnostic.code = "room_admin_authorization_lookup_failed";
+    throw diagnostic;
+  }
+
+  const allowedRoles = new Set([
+    "room_admin",
+    "room_manager",
+    "hotel_manager",
+    "master_admin",
+  ]);
+  return admin && allowedRoles.has(admin.role)
+    ? { ...data.user, roomAdminRole: admin.role }
+    : null;
+}

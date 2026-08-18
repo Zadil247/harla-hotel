@@ -123,52 +123,6 @@ function generateBookingNumber() {
   return `HRB-${timestamp}${random}`;
 }
 
-function safeStorageSegment(value, fallback = "file") {
-  const segment = clean(value)
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 90);
-  return segment || fallback;
-}
-
-function safeStorageFileName(fileName, fallback = "file") {
-  const cleaned = clean(fileName)
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  return cleaned || fallback;
-}
-
-function governmentIdMimeType(file) {
-  const extension = clean(file?.name).split(".").pop()?.toLowerCase();
-  const extensionTypes = {
-    pdf: "application/pdf",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-  };
-  return file?.type || extensionTypes[extension] || "";
-}
-
-function validateGovernmentIdUpload(file) {
-  if (!file || !file.name) {
-    throw new Error("Government-issued ID upload is required.");
-  }
-
-  const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
-  const mimeType = governmentIdMimeType(file);
-  if (!allowedTypes.has(mimeType)) {
-    throw new Error("Government-issued ID must be a PDF, JPG, JPEG, or PNG file.");
-  }
-
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error("Government-issued ID must be 10 MB or smaller.");
-  }
-
-  return mimeType;
-}
-
 export function createBookingReference() {
   return generateBookingNumber();
 }
@@ -426,81 +380,6 @@ export async function uploadPaymentScreenshot(file, folder = "restaurant-orders"
   }
 
   return path;
-}
-
-export async function uploadRoomPaymentProof(file, bookingReference) {
-  if (!file || !file.name) {
-    throw new Error("Payment confirmation file is required.");
-  }
-
-  const extension = clean(file.name).split(".").pop()?.toLowerCase();
-  const allowedTypes = new Set([
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]);
-  const extensionTypes = {
-    pdf: "application/pdf",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    webp: "image/webp",
-  };
-  const mimeType = file.type || extensionTypes[extension] || "";
-
-  if (!allowedTypes.has(mimeType) || !extensionTypes[extension]) {
-    throw new Error("Payment confirmation must be PDF, JPG, JPEG, PNG, or WebP.");
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error("Payment confirmation must be 10 MB or smaller.");
-  }
-
-  const bookingFolder = safeStorageSegment(bookingReference, "room-booking");
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = safeStorageFileName(file.name);
-  const path = `room-bookings/${bookingFolder}/${timestamp}-${fileName}`;
-  const supabase = await getSupabaseClient();
-  const { error } = await supabase.storage
-    .from("payment-screenshots")
-    .upload(path, file, {
-      cacheControl: "3600",
-      contentType: mimeType,
-      upsert: false,
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  return path;
-}
-
-export async function uploadGovernmentId(file, bookingReference) {
-  const mimeType = validateGovernmentIdUpload(file);
-  const bookingFolder = safeStorageSegment(bookingReference, "room-booking");
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = safeStorageFileName(file.name);
-  const path = `room-bookings/${bookingFolder}/${timestamp}-${fileName}`;
-  const supabase = await getSupabaseClient();
-
-  const { error } = await supabase.storage.from("guest-ids").upload(path, file, {
-    cacheControl: "3600",
-    contentType: mimeType,
-    upsert: false,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return {
-    path,
-    fileName: file.name,
-    mimeType,
-    fileSize: file.size,
-    uploadedAt: new Date().toISOString(),
-  };
 }
 
 export async function createEventRequest(payload) {
