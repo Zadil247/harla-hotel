@@ -425,7 +425,7 @@ export function BookingForm() {
   `;
 }
 
-export function Footer() {
+export function Footer({ email = siteConfig.email } = {}) {
   return `
     <footer class="footer">
       <div>
@@ -438,7 +438,7 @@ export function Footer() {
         <!-- REPLACE: Update phone, WhatsApp, email, and address in src/data.js. -->
         <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>
         <a href="https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}">WhatsApp</a>
-        <a href="mailto:${siteConfig.email}">${siteConfig.email}</a>
+        <a href="mailto:${email}">${email}</a>
         <span>${siteConfig.address}</span>
       </address>
       <div class="social-links" aria-label="Social media links">

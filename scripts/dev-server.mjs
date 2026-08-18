@@ -88,6 +88,71 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (
+    request.method === "POST" &&
+    requestUrl.pathname === "/api/event-confirmation"
+  ) {
+    const chunks = [];
+    for await (const chunk of request) {
+      chunks.push(chunk);
+    }
+    const body = Buffer.concat(chunks);
+    const apiRequest = new Request(requestUrl, {
+      method: "POST",
+      headers: request.headers,
+      body,
+    });
+    const { default: handler } = await import("../api/event-confirmation.js");
+    const apiResponse = await handler.fetch(apiRequest);
+    response.writeHead(apiResponse.status, Object.fromEntries(apiResponse.headers.entries()));
+    response.end(Buffer.from(await apiResponse.arrayBuffer()));
+    return;
+  }
+
+  if (
+    request.method === "POST" &&
+    requestUrl.pathname === "/api/event-confirmation-email"
+  ) {
+    const chunks = [];
+    for await (const chunk of request) {
+      chunks.push(chunk);
+    }
+    const body = Buffer.concat(chunks);
+    const apiRequest = new Request(requestUrl, {
+      method: "POST",
+      headers: request.headers,
+      body,
+    });
+    const { default: handler } = await import("../api/event-confirmation-email.js");
+    const apiResponse = await handler.fetch(apiRequest);
+    response.writeHead(apiResponse.status, Object.fromEntries(apiResponse.headers.entries()));
+    response.end(Buffer.from(await apiResponse.arrayBuffer()));
+    return;
+  }
+
+  const eventApiModules = {
+    "/api/event-request": "../api/event-request.js",
+    "/api/event-portal": "../api/event-portal.js",
+    "/api/event-admin": "../api/event-admin.js",
+  };
+  if (request.method === "POST" && eventApiModules[requestUrl.pathname]) {
+    const chunks = [];
+    for await (const chunk of request) {
+      chunks.push(chunk);
+    }
+    const body = Buffer.concat(chunks);
+    const apiRequest = new Request(requestUrl, {
+      method: "POST",
+      headers: request.headers,
+      body,
+    });
+    const { default: handler } = await import(eventApiModules[requestUrl.pathname]);
+    const apiResponse = await handler.fetch(apiRequest);
+    response.writeHead(apiResponse.status, Object.fromEntries(apiResponse.headers.entries()));
+    response.end(Buffer.from(await apiResponse.arrayBuffer()));
+    return;
+  }
+
   if (request.method !== "GET" && request.method !== "HEAD") {
     response.writeHead(405, { Allow: "GET, HEAD" });
     response.end("Method not allowed");

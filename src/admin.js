@@ -1,5 +1,5 @@
-import { Navbar } from "./components.js?v=20260521-room-automation";
-import { images, siteConfig } from "./data.js?v=20260521-room-automation";
+import { Navbar } from "./components.js?v=20260815-event-hall-v1";
+import { images, siteConfig } from "./data.js?v=20260815-event-hall-v1";
 import {
   backendSetupMessage,
   getAdminDashboardData,
@@ -13,7 +13,7 @@ import {
   updateRequestStatus,
   updateRestaurantOrderStatus,
   updateRestaurantSettings,
-} from "./supabase-api.js?v=20260521-room-automation";
+} from "./supabase-api.js?v=20260818-event-admin-separation";
 
 const app = document.querySelector("#admin-app");
 const authTimeoutMs = 18000;
@@ -23,22 +23,9 @@ const defaultRestaurantSettings = {
   custom_message: "",
 };
 let latestRoomBookings = [];
+let adminNotice = "";
 
 const requestSections = [
-  {
-    key: "eventRequests",
-    table: "event_requests",
-    title: "Event Hall Requests",
-    columns: [
-      ["Guest", "full_name"],
-      ["Phone", "phone"],
-      ["Type", "service_type"],
-      ["Event", "event_type"],
-      ["Date", "event_date"],
-      ["Guests", "guests"],
-      ["Catering", "catering_package"],
-    ],
-  },
   {
     key: "restaurantRequests",
     table: "restaurant_requests",
@@ -620,6 +607,7 @@ async function renderDashboard(adminProfile) {
         <button class="btn btn-primary" type="button" id="admin-sign-out">Sign Out</button>
       </section>
       ${dashboardWarnings(data.dashboardErrors || [])}
+      ${adminNotice ? `<section class="admin-card admin-notice" role="status"><p>${escapeHtml(adminNotice)}</p></section>` : ""}
       ${roomBookingsSection(latestRoomBookings, data.roomInventory || [])}
       ${restaurantOrdersSection(restaurantOrders, restaurantSettings)}
       <div class="admin-grid">
@@ -628,6 +616,7 @@ async function renderDashboard(adminProfile) {
       <p class="admin-status" role="status" aria-live="polite"></p>
     `);
 
+    adminNotice = "";
     bindAdminActions(adminProfile);
   } catch (error) {
     dashboardShell(`

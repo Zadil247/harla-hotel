@@ -3,7 +3,6 @@ import { supabaseSetupMessage } from "./supabase-config.js?v=20260521-room-autom
 
 const requestTables = new Set([
   "room_bookings",
-  "event_requests",
   "restaurant_requests",
   "restaurant_orders",
   "package_bookings",
@@ -133,12 +132,12 @@ function safeStorageSegment(value, fallback = "file") {
   return segment || fallback;
 }
 
-function safeStorageFileName(fileName) {
+function safeStorageFileName(fileName, fallback = "file") {
   const cleaned = clean(fileName)
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
-  return cleaned || "government-id";
+  return cleaned || fallback;
 }
 
 function governmentIdMimeType(file) {
@@ -180,6 +179,23 @@ export async function getRoomInventory() {
     .from("room_inventory")
     .select("id, room_type, total_rooms, available_rooms, updated_at")
     .order("room_type", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function getEventHalls() {
+  const supabase = await getSupabaseClient();
+  const { data, error } = await supabase
+    .from("event_halls")
+    .select(
+      "id, slug, name, hall_type, description, capacity, price_note, image_paths, facilities, features, seating_notes, is_active",
+    )
+    .eq("is_active", true)
+    .order("name", { ascending: true });
 
   if (error) {
     throw error;
@@ -595,7 +611,6 @@ export async function getAdminDashboardData() {
   const dashboardErrors = [];
   const queries = {
     roomBookings: supabase.from("room_bookings").select("*").order("created_at", { ascending: false }),
-    eventRequests: supabase.from("event_requests").select("*").order("created_at", { ascending: false }),
     restaurantRequests: supabase.from("restaurant_requests").select("*").order("created_at", { ascending: false }),
     restaurantOrders: supabase.from("restaurant_orders").select("*").order("created_at", { ascending: false }),
     roomInventory: supabase
@@ -625,7 +640,6 @@ export async function getAdminDashboardData() {
   dashboardData.dashboardErrors = dashboardErrors;
   dashboardData.roomBookings = await withSignedPaymentScreenshots(supabase, dashboardData.roomBookings || []);
   dashboardData.restaurantOrders = await withSignedPaymentScreenshots(supabase, dashboardData.restaurantOrders || []);
-
   return dashboardData;
 }
 

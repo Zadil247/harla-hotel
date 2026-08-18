@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-static.mjs",
-    "dev": "node scripts/dev-server.mjs"
+    "dev": "node scripts/dev-server.mjs",
+    "test:event-workflow": "node scripts/test-event-workflow.mjs",
+    "test:event-pdf": "node scripts/test-event-pdf.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.8",
+    "pdf-lib": "1.17.1",
+    "sharp": "0.35.3",
     "stripe": "22.3.2"
   }
 }

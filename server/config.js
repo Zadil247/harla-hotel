@@ -4,7 +4,7 @@ export function requiredEnv(name) {
   const value = String(process.env[name] || "").trim();
   if (!value) {
     throw new ConfigurationError(
-      `${name} is not configured on the secure payment server.`,
+      `${name} is not configured on the secure Harla Hotel server.`,
     );
   }
   return value;

@@ -8,6 +8,7 @@ export const siteConfig = {
   phone: "+251 915 321 188",
   whatsapp: "+251 915 321 188",
   email: "booking@harlahotel.com",
+  eventsEmail: "events@harlahotel.com",
   address: "Harar, Ethiopia",
   // REPLACE: Update this Google Maps link if the final hotel listing changes.
   googleMapsUrl: "https://maps.app.goo.gl/ZR1Qz3pQxqCr7UnV6",
@@ -222,6 +223,40 @@ export const culturalPhotoRoom = {
     "Spacious Harari-themed photos and meals",
   ],
 };
+
+// Fallback catalogue for local previews before the Event Hall Supabase migration is applied.
+// Supabase event_halls records replace these values automatically in production.
+export const eventHallFallbacks = [
+  {
+    id: "harla-event-hall",
+    slug: "harla-event-hall",
+    name: "Harla Hotel Event Hall",
+    hall_type: "Event Hall",
+    description:
+      "A flexible venue for conferences, government and corporate meetings, workshops, weddings, receptions, and private celebrations.",
+    capacity: null,
+    price_note: "Price confirmed after event requirements are reviewed",
+    image_paths: [images.eventHall, images.eventWeddingStage],
+    facilities: ["Flexible seating", "Presentation support", "Buffet service", "Refreshment service"],
+    features: ["Corporate and government events", "Weddings and receptions", "Training and seminars", "Private celebrations"],
+    seating_notes: "Final seating arrangement and capacity are confirmed with Harla Hotel.",
+    is_active: true,
+  },
+  {
+    id: "cultural-photo-lunch-room",
+    slug: "cultural-photo-lunch-room",
+    name: culturalPhotoRoom.title,
+    hall_type: "Cultural Event Room",
+    description: culturalPhotoRoom.description,
+    capacity: null,
+    price_note: "Price confirmed after event requirements are reviewed",
+    image_paths: [images.culturalPhotoLunchRoom],
+    facilities: ["Harari cultural decor", "Photography setting", "Lunch gatherings", "Private group use"],
+    features: culturalPhotoRoom.features,
+    seating_notes: "Final seating arrangement and capacity are confirmed with Harla Hotel.",
+    is_active: true,
+  },
+];
 
 export const services = [
   {
