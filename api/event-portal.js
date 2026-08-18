@@ -1,5 +1,5 @@
 import { bookingForPortal, portalResponse, uploadPortalPayment } from "../server/event-booking-service.js";
-import { sendEventWorkflowEmail } from "../server/event-email-service.js";
+import { sendStableEventWorkflowEmail } from "../server/event-email-service.js";
 import { cleanText } from "../server/event-workflow.js";
 import { getSupabaseAdmin } from "../server/supabase-admin.js";
 
@@ -49,8 +49,8 @@ export default {
         );
         let emailSent = false;
         try {
-          const email = await sendEventWorkflowEmail(supabase, updated, "payment_submitted", body.token);
-          emailSent = email.sent;
+          const delivered = await sendStableEventWorkflowEmail(supabase, updated, "payment_submitted");
+          emailSent = delivered.email.sent;
         } catch (error) {
           console.error("Event payment acknowledgement email failed", error);
         }

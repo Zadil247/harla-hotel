@@ -67,7 +67,7 @@ function accessMessage() {
   const genericError = state.accessState === "error";
   const title = invalid ? "Secure link unavailable" : genericError ? "Request temporarily unavailable" : "Open your secure event request";
   const copy = invalid
-    ? "This secure request link is no longer valid. Please use the most recent email sent by Harla Hotel Events or contact our Events Team."
+    ? "This secure link is no longer current. Please open the most recent Harla Hotel Events email or contact events@harlahotel.com."
     : genericError
       ? "We could not open your request right now. Please try the secure link again or contact our Events Team."
       : "Open the most recent secure link sent by Harla Hotel Events. This device will remember a validated request for future visits.";

@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { requiredEnv } from "./config.js";
-import { rotateBookingPortalToken } from "./event-booking-service.js";
+import { syncStableBookingPortalToken } from "./event-booking-service.js";
 import { ensureEventHallConfirmationPdf } from "./event-confirmation-service.js";
 import { customerPortalUrl, eventStatusLabel } from "./event-workflow.js";
 
@@ -232,11 +232,11 @@ export async function sendEventWorkflowEmail(supabase, booking, type, portalToke
   return { sent: true, messageId: result.id || null, portalUrl: rendered.portalUrl };
 }
 
-export async function rotateAndSendEventWorkflowEmail(supabase, booking, type) {
-  // Validate delivery configuration before invalidating the customer's current link.
+export async function sendStableEventWorkflowEmail(supabase, booking, type) {
+  // Validate delivery configuration before repairing a legacy rotated token hash.
   requiredEnv("RESEND_API_KEY");
   requiredEnv("HARLA_EMAIL_FROM");
-  const rotated = await rotateBookingPortalToken(supabase, booking.id);
-  const email = await sendEventWorkflowEmail(supabase, rotated.booking, type, rotated.portalToken);
-  return { booking: rotated.booking, email };
+  const stable = await syncStableBookingPortalToken(supabase, booking);
+  const email = await sendEventWorkflowEmail(supabase, stable.booking, type, stable.portalToken);
+  return { booking: stable.booking, email };
 }
