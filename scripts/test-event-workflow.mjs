@@ -7,8 +7,8 @@ process.env.RESEND_API_KEY = "re_test_event_portal";
 process.env.HARLA_EMAIL_FROM = "Harla Hotel Events <events@harlahotel.com>";
 
 const workflow = await import("../server/event-workflow.js");
-const { bookingForPortal, updateEventByAdmin } = await import("../server/event-booking-service.js");
-const { renderEventEmail, rotateAndSendEventWorkflowEmail } = await import("../server/event-email-service.js");
+const { bookingForPortal, updateEventByAdmin, uploadPortalPayment } = await import("../server/event-booking-service.js");
+const { renderEventEmail, sendStableEventWorkflowEmail } = await import("../server/event-email-service.js");
 const bookingCore = await import("../src/event-booking-core.js");
 const portalAccess = await import("../src/event-portal-access.js");
 
@@ -179,6 +179,7 @@ assert.deepEqual(staleTransition.filters, [
 const booking = {
   id: "private-row-id",
   booking_reference: "HARLA-HALL-2026-0042",
+  submission_token: submissionToken,
   client_full_name: "Muna Yusuf",
   organization: "Harar Culture Forum",
   email: "muna@example.com",
@@ -270,7 +271,12 @@ function workflowEmailClient(baseBooking) {
   };
 }
 
-const emailClient = workflowEmailClient(booking);
+const legacyPortalToken = workflow.rotatePortalToken();
+const legacyBooking = {
+  ...booking,
+  portal_token_hash: workflow.hashPortalToken(legacyPortalToken),
+};
+const emailClient = workflowEmailClient(legacyBooking);
 const originalFetch = globalThis.fetch;
 let deliveredEmail = null;
 globalThis.fetch = async (_url, options) => {
@@ -278,33 +284,146 @@ globalThis.fetch = async (_url, options) => {
   return { ok: true, async json() { return { id: "event-email-test" }; } };
 };
 try {
-  const delivered = await rotateAndSendEventWorkflowEmail(emailClient.supabase, booking, "payment_request");
-  const deliveredUrl = new URL(delivered.email.portalUrl);
-  const deliveredToken = deliveredUrl.searchParams.get("token");
+  let deliveredBooking = legacyBooking;
+  const lifecycleEmailTypes = [
+    "request_received",
+    "payment_request",
+    "payment_request",
+    "payment_submitted",
+    "status_update",
+  ];
+  for (const type of lifecycleEmailTypes) {
+    const delivered = await sendStableEventWorkflowEmail(emailClient.supabase, deliveredBooking, type);
+    const deliveredToken = new URL(delivered.email.portalUrl).searchParams.get("token");
+    assert.equal(deliveredToken, firstToken, `${type} must use the original deterministic portal token.`);
+    assert.match(deliveredEmail.html, new RegExp(firstToken));
+    deliveredBooking = delivered.booking;
+  }
+
   const tokenUpdates = emailClient.updates.filter((values) => values.portal_token_hash);
-  assert.equal(tokenUpdates.length, 1, "One email action must rotate the portal token exactly once.");
-  assert.equal(workflow.matchesPortalToken(tokenUpdates[0].portal_token_hash, deliveredToken), true);
-  assert.match(deliveredEmail.html, new RegExp(deliveredToken));
+  assert.equal(tokenUpdates.length, 1, "A legacy rotated hash must be repaired once, not rotated on every email.");
+  assert.equal(tokenUpdates[0].portal_token_hash, workflow.hashPortalToken(firstToken));
+  assert.doesNotMatch(JSON.stringify(emailClient.updates), new RegExp(firstToken));
+
+  const otherSubmissionToken = "d78cccf2-81c5-4eb8-af57-607ab6d16a66";
+  const otherPortalToken = workflow.initialPortalToken(otherSubmissionToken);
+  const otherBooking = {
+    ...booking,
+    id: "other-private-row-id",
+    booking_reference: "HARLA-HALL-2026-0043",
+    submission_token: otherSubmissionToken,
+    portal_token_hash: workflow.hashPortalToken(otherPortalToken),
+  };
   const lookupSupabase = {
     from(table) {
       assert.equal(table, "event_hall_bookings");
+      let reference = "";
       return {
         select() { return this; },
-        eq() { return this; },
-        async maybeSingle() { return { data: delivered.booking, error: null }; },
+        eq(column, value) {
+          if (column === "booking_reference") reference = value;
+          return this;
+        },
+        async maybeSingle() {
+          return {
+            data: [deliveredBooking, otherBooking].find((item) => item.booking_reference === reference) || null,
+            error: null,
+          };
+        },
       };
     },
   };
   assert.equal(
-    (await bookingForPortal(lookupSupabase, booking.booking_reference, deliveredToken))?.booking_reference,
+    (await bookingForPortal(lookupSupabase, booking.booking_reference, firstToken))?.booking_reference,
     booking.booking_reference,
-    "The exact token sent in the newest email must authenticate against the stored hash.",
+    "The original request-received link must remain valid throughout the normal lifecycle.",
   );
   assert.equal(
-    await bookingForPortal(lookupSupabase, booking.booking_reference, firstToken),
+    await bookingForPortal(lookupSupabase, booking.booking_reference, legacyPortalToken),
     null,
-    "A rotated older email token must fail without exposing whether the reference exists.",
+    "A legacy random token must stop working after the next normal email repairs the stored hash.",
   );
+  assert.equal(
+    await bookingForPortal(lookupSupabase, booking.booking_reference, "wrong-token"),
+    null,
+    "A random token must fail without exposing whether the reference exists.",
+  );
+  assert.equal(
+    await bookingForPortal(lookupSupabase, booking.booking_reference, otherPortalToken),
+    null,
+    "Another booking's token must not open this booking.",
+  );
+  assert.equal(
+    await bookingForPortal(lookupSupabase, otherBooking.booking_reference, firstToken),
+    null,
+    "This booking's token must not open another booking.",
+  );
+
+  const paymentUploads = [];
+  const paymentUpdates = [];
+  const paymentSupabase = {
+    storage: {
+      from(bucket) {
+        assert.equal(bucket, "payment-screenshots");
+        return {
+          async upload(path, bytes, options) {
+            paymentUploads.push({ path, bytes, options });
+            return { error: null };
+          },
+          async remove() {
+            return { error: null };
+          },
+        };
+      },
+    },
+    from(table) {
+      assert.equal(table, "event_hall_bookings");
+      let values = {};
+      return {
+        update(nextValues) {
+          values = nextValues;
+          paymentUpdates.push(nextValues);
+          return this;
+        },
+        eq() { return this; },
+        select() { return this; },
+        async maybeSingle() {
+          return { data: { ...deliveredBooking, ...values }, error: null };
+        },
+      };
+    },
+  };
+  const paymentProof = {
+    name: "payment-confirmation.png",
+    type: "image/png",
+    size: 8,
+    async arrayBuffer() {
+      return Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
+    },
+  };
+  const submitted = await uploadPortalPayment(
+    paymentSupabase,
+    { ...deliveredBooking, status: "approved_awaiting_payment" },
+    firstToken,
+    paymentProof,
+    "EVENT-PAYMENT-1001",
+  );
+  assert.equal(submitted.status, "payment_submitted");
+  assert.equal(submitted.payment_status, "pending_payment_confirmation");
+  assert.equal(paymentUploads.length, 1, "The stable portal token must authorize one protected payment upload.");
+  assert.match(paymentUploads[0].path, /^event-hall-bookings\/HARLA-HALL-2026-0042\//);
+  await assert.rejects(
+    uploadPortalPayment(
+      paymentSupabase,
+      { ...deliveredBooking, status: "approved_awaiting_payment" },
+      "wrong-token",
+      paymentProof,
+      "EVENT-PAYMENT-1002",
+    ),
+    /invalid or expired/i,
+  );
+  assert.equal(paymentUploads.length, 1, "An invalid token must be rejected before storage is accessed.");
+  assert.equal(paymentUpdates.length, 1);
 } finally {
   globalThis.fetch = originalFetch;
 }
@@ -363,13 +482,18 @@ assert.match(portalClient, /history\.replaceState/);
 assert.match(eventPortalAccessClient, /searchParams\.delete\("token"\)/);
 assert.match(eventPortalAccessClient, /searchParams\.delete\("reference"\)/);
 assert.doesNotMatch(portalClient, /Private access token|data-event-access-form/);
-assert.match(portalClient, /This secure request link is no longer valid/);
+assert.match(portalClient, /This secure link is no longer current/);
 assert.match(portalClient, /rememberPortalAccess/);
 assert.doesNotMatch(portalClient, /console\.(?:log|info|debug).*token/i);
-assert.match(eventAdminApi, /rotateAndSendEventWorkflowEmail/);
+assert.match(eventAdminApi, /sendStableEventWorkflowEmail/);
+assert.doesNotMatch(eventAdminApi, /rotateAndSendEventWorkflowEmail/);
 assert.doesNotMatch(eventAdminApi, /import[\s\S]{0,120}rotateBookingPortalToken[\s\S]{0,120}event-booking-service/);
-assert.match(confirmationEmailApi, /rotateAndSendEventWorkflowEmail/);
+assert.match(confirmationEmailApi, /sendStableEventWorkflowEmail/);
+assert.doesNotMatch(confirmationEmailApi, /rotateAndSendEventWorkflowEmail/);
 assert.doesNotMatch(confirmationEmailApi, /rotateBookingPortalToken/);
+assert.match(requestApi, /sendStableEventWorkflowEmail/);
+assert.match(portalApi, /sendStableEventWorkflowEmail/);
+assert.doesNotMatch(eventEmailService, /rotateAndSendEventWorkflowEmail|rotateBookingPortalToken/);
 assert.match(eventBookingClient, /emailDelivery\?\.sent/);
 for (const eventContactSource of [portalClient, eventBookingClient, eventEmailService, eventHallClient, eventBookingCoreClient]) {
   assert.match(eventContactSource, /events@harlahotel\.com|eventsEmail/);

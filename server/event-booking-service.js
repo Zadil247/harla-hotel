@@ -272,6 +272,30 @@ export async function uploadPortalPayment(supabase, booking, token, file, refere
   return updated;
 }
 
+export async function syncStableBookingPortalToken(supabase, booking) {
+  const submissionToken = cleanText(booking?.submission_token);
+  if (!booking?.id || !submissionToken) {
+    throw new Error("The Event Hall request cannot issue a secure customer link.");
+  }
+
+  const portalToken = initialPortalToken(submissionToken);
+  if (matchesPortalToken(booking.portal_token_hash, portalToken)) {
+    return { booking, portalToken };
+  }
+
+  const { data, error } = await supabase
+    .from("event_hall_bookings")
+    .update({
+      portal_token_hash: hashPortalToken(portalToken),
+      portal_token_issued_at: new Date().toISOString(),
+    })
+    .eq("id", booking.id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return { booking: data, portalToken };
+}
+
 export async function rotateBookingPortalToken(supabase, bookingId) {
   const portalToken = rotatePortalToken();
   const now = new Date().toISOString();

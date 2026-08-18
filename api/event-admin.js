@@ -4,7 +4,7 @@ import {
   createEventRequestRecord,
   updateEventByAdmin,
 } from "../server/event-booking-service.js";
-import { rotateAndSendEventWorkflowEmail, sendEventWorkflowEmail } from "../server/event-email-service.js";
+import { sendStableEventWorkflowEmail } from "../server/event-email-service.js";
 import { ensureEventHallConfirmationPdf } from "../server/event-confirmation-service.js";
 import { cleanText, normalizeEventStatus } from "../server/event-workflow.js";
 import { getSupabaseAdmin } from "../server/supabase-admin.js";
@@ -92,7 +92,8 @@ export default {
         const emailType = approved ? "payment_request" : "request_received";
         let email = { sent: false };
         try {
-          email = await sendEventWorkflowEmail(supabase, created.booking, emailType, created.portalToken);
+          const delivered = await sendStableEventWorkflowEmail(supabase, created.booking, emailType);
+          email = delivered.email;
         } catch (error) {
           console.error("Admin-created Event Hall email failed", error);
           email = { sent: false, error: error.message };
@@ -120,7 +121,7 @@ export default {
             updated = await bookingById(supabase, updated.id);
           }
           try {
-            const delivered = await rotateAndSendEventWorkflowEmail(supabase, updated, type);
+            const delivered = await sendStableEventWorkflowEmail(supabase, updated, type);
             updated = delivered.booking;
             email = delivered.email;
           } catch (error) {
@@ -134,7 +135,7 @@ export default {
       if (body.action === "resend") {
         const booking = await bookingById(supabase, body.bookingId);
         const type = emailTypeForStatus(booking.status);
-        const delivered = await rotateAndSendEventWorkflowEmail(supabase, booking, type);
+        const delivered = await sendStableEventWorkflowEmail(supabase, booking, type);
         return response(delivered);
       }
 

@@ -1,5 +1,5 @@
 import { requestingEventAdmin } from "../server/admin-auth.js";
-import { rotateAndSendEventWorkflowEmail } from "../server/event-email-service.js";
+import { sendStableEventWorkflowEmail } from "../server/event-email-service.js";
 import { cleanText, normalizeEventStatus } from "../server/event-workflow.js";
 import { getSupabaseAdmin } from "../server/supabase-admin.js";
 
@@ -38,7 +38,7 @@ export default {
       if (error) throw error;
       if (!booking) return response({ error: "Event Hall request was not found." }, 404);
 
-      const delivered = await rotateAndSendEventWorkflowEmail(supabase, booking, emailType(booking.status));
+      const delivered = await sendStableEventWorkflowEmail(supabase, booking, emailType(booking.status));
       return response(delivered.email);
     } catch (error) {
       console.error("Event Hall email endpoint error", error);
