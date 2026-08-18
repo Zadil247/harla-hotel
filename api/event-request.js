@@ -1,5 +1,5 @@
 import { createEventRequestRecord, eventSlotAvailable, portalResponse } from "../server/event-booking-service.js";
-import { sendEventWorkflowEmail } from "../server/event-email-service.js";
+import { sendStableEventWorkflowEmail } from "../server/event-email-service.js";
 import { customerPortalUrl } from "../server/event-workflow.js";
 import { getSupabaseAdmin } from "../server/supabase-admin.js";
 
@@ -55,12 +55,8 @@ export default {
 
       let email = { sent: false, reason: "not_attempted" };
       try {
-        email = await sendEventWorkflowEmail(
-          supabase,
-          created.booking,
-          "request_received",
-          created.portalToken,
-        );
+        const delivered = await sendStableEventWorkflowEmail(supabase, created.booking, "request_received");
+        email = delivered.email;
       } catch (error) {
         console.error("Event request received email failed", error);
         await supabase.from("event_hall_bookings").update({
