@@ -59,6 +59,7 @@ function orderResult(order) {
         If you need help with this order, contact Harla Hotel and share your order number.
       </p>
       <a class="btn btn-whatsapp" href="${whatsappLinks.table}" target="_blank" rel="noopener">Contact on WhatsApp</a>
+      <p><a href="mailto:${siteConfig.restaurantEmail}">${siteConfig.restaurantEmail}</a></p>
     </section>
   `;
 }
@@ -99,7 +100,7 @@ function render(message = "", order = null) {
         </section>
       </div>
     </main>
-    ${Footer()}
+    ${Footer({ email: siteConfig.restaurantEmail })}
   `;
 
   document.querySelector("[data-header]")?.classList.add("is-scrolled");

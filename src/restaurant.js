@@ -96,6 +96,7 @@ app.innerHTML = `
         <div class="contact-list">
           <a href="./restaurant-order.html">Open Restaurant Menu</a>
           <a href="${whatsappLinks.vipRoom}">WhatsApp VIP Room</a>
+          <a href="mailto:${siteConfig.restaurantEmail}">${siteConfig.restaurantEmail}</a>
           <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>
         </div>
       </div>
@@ -106,7 +107,7 @@ app.innerHTML = `
       </div>
     </section>
   </main>
-  ${Footer()}
+  ${Footer({ email: siteConfig.restaurantEmail })}
 `;
 
 const header = document.querySelector("[data-header]");

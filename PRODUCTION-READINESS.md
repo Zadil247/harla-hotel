@@ -6,7 +6,9 @@ PR #3: https://github.com/Zadil247/harla-hotel/pull/3
 
 The restaurant implementation is published to `codex/v1-production-readiness`. Both Vercel previews built successfully. Production remains on `3d46c26264b8f2dbd5044f093b63c2b64c89d1a3`.
 
-The owner explicitly approved publishing the source (including existing customer payment instructions) and creating, approving and cancelling synthetic test bookings and test emails. Automatic approval review subsequently rejected the merge into `main`, requiring explicit approval for the production merge/deployment. Do not bypass that restriction with another deployment route.
+The owner explicitly approved publishing the source (including existing customer payment instructions) and creating, approving and cancelling synthetic test bookings and test emails. After the initial automatic approval rejection, the owner explicitly approved merging PR #3 into `main` and deploying to Vercel once the remaining checks pass. No further production approval is needed once that condition is met.
+
+Email routing: room reservations use booking@harlahotel.com; events use events@harlahotel.com; the owner designated restaurant@harlahotel.com for restaurant contact and future restaurant email testing. Restaurant pages now show that address. Automated restaurant email notifications are not implemented in the current workflow; staff use the dashboard and customers use order-status lookup.
 
 ## Implemented
 
@@ -26,7 +28,7 @@ The owner explicitly approved publishing the source (including existing customer
 - Public event API created a pending request and the email provider accepted its acknowledgment to events@harlahotel.com. Valid portal token: HTTP 200; wrong token: HTTP 404; unauthenticated event-admin API: HTTP 403.
 - All five guest/document/proof storage buckets are private.
 
-Provider acceptance confirms email sending, not receipt in the destination inbox. No actual payment, stay, meal or event took place.
+The owner confirmed receipt of both test emails in the designated room and event inboxes. This confirms delivery of the room confirmation and event-request acknowledgment; final event-confirmation email remains untested. No actual payment, stay, meal or event took place.
 
 ## Synthetic records and cleanup
 
@@ -38,12 +40,12 @@ Cleanup used narrowly targeted, owner-authorized database maintenance after the 
 
 ## Remaining before full operational sign-off
 
-- Explicit production merge/deployment approval, followed by production smoke checks.
+- Complete the remaining checks below, then merge/deploy under the recorded owner approval and perform production smoke checks.
 - Apply `20260916173605_restaurant_server_only_submissions.sql` ONLY AFTER the new restaurant API is live. It revokes direct client INSERT so canonical server prices cannot be bypassed. Then run `supabase/tests/restaurant_order_privacy.sql` and record the actual migration version. The earlier privacy and service-access migrations are already applied.
 - Restaurant staff dashboard approval/proof/kitchen/availability checks with an authorized restaurant admin.
 - Event-admin sign-in, quote/payment approval, final confirmation PDF/email and role-isolation checks. Room and event admin accounts are separate; no active account currently has both roles.
 - Remaining browser cancellation, inventory override and mobile visual checks. The browser stalled after the PDF viewer/checkout interaction; a fresh-tab recovery also failed. No claim is made that these checks passed.
-- Confirm inbox receipt at both designated addresses. Event request acknowledgment passed; final event-confirmation sending remains untested.
+- Test the final event-confirmation email. Inbox receipt of the room confirmation and event-request acknowledgment is already owner-confirmed.
 - International transfer instructions currently require hotel contact; optional Odoo product variants were not imported. Backup prices are the supplied source of truth.
 - Review remaining Supabase advisor warnings (including mutable function search path and leaked-password protection) without indiscriminately revoking intended customer lookup functions.
 
