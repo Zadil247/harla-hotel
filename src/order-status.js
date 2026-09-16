@@ -51,7 +51,7 @@ function orderResult(order) {
       <h2>${escapeHtml(orderStatusMessage(order))}</h2>
       <dl class="status-details">
         <div><dt>Order type</dt><dd>${escapeHtml(order.order_type)}</dd></div>
-        <div><dt>Payment status</dt><dd>${escapeHtml(order.payment_status || "-")}</dd></div>
+        <div><dt>Payment status</dt><dd>${escapeHtml(order.payment_status === "pay_at_hotel" ? "Pay at the hotel" : order.status === "approved" ? "Payment verified" : "Awaiting payment verification")}</dd></div>
         <div><dt>Order status</dt><dd>${escapeHtml(order.status)}</dd></div>
         <div><dt>Kitchen system</dt><dd>${order.odoo_status === "entered" ? "Sent to kitchen" : "Awaiting kitchen handoff"}</dd></div>
       </dl>

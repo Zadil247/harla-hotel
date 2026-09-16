@@ -40,11 +40,11 @@ Harla V2 remains a separate React/TypeScript rebuild. V1 completion and sign-off
 
 ## Deployment checkpoint
 
-- The active production commit is still `3d46c26264b8f2dbd5044f093b63c2b64c89d1a3`. New restaurant code is committed locally on `codex/v1-production-readiness`; it has not deployed.
-- All 60 product-image Git blobs are uploaded. Their SHA references can be regenerated with `git rev-parse HEAD:<path>`; no image re-upload is needed.
-- Automatic approval review rejected creating the public GitHub source tree twice, flagging payment-account instructions. A source comparison confirmed that `restaurantPaymentMethods` is unchanged from public main, but review still requires explicit user permission. Do not try another publishing route to bypass this decision.
-- Secure room-admin sign-in succeeded in the test browser. The live dashboard loaded and authenticated inventory controls were visible.
-- A synthetic room request was prepared for 1–2 February 2027, with the designated `booking@harlahotel.com` recipient. The room availability check returned 8 Queen rooms at 4,500 ETB. A clearly labelled synthetic image (not an identity document or payment receipt) was selected successfully.
-- Automatic approval review blocked the next form step, citing transmission of contact/identity fields. No test booking was created and no test confirmation email was sent. Explicit permission is needed for this synthetic workflow before continuing.
-- `20260916173605_restaurant_server_only_submissions.sql` is prepared but NOT applied. Apply only after the new restaurant API is deployed and verified. The updated SQL regression test targets that future state.
-- Next: obtain the two explicit approvals, create the GitHub tree/commit/PR using existing image blobs, verify the Vercel preview, finish the synthetic room/event/restaurant tests, publish, then apply and verify the final INSERT revocation. Release all synthetic inventory holds after testing.
+- Owner explicitly approved public GitHub publication and synthetic booking/confirmation-email testing in chat.
+- PR #3 contains the implementation. Preview `harla-hotel-8j4b70nhj-zadil247s-projects.vercel.app` built successfully from `050adf93f38da560f5d48b75f9e6fd4da4bb8456`.
+- Browser verified 155 menu items, search filtering, Special Ful at 250 ETB, checkout and a successful pending restaurant submission. Synthetic reference: `HRL-51a53a67b1a5423fa2da64c12f39ce17` (do not prepare).
+- Secure room-admin login succeeded. The synthetic room request `HRB-MU4G34FM1JB` for 1–2 February 2027 was created, with private test ID/proof uploads and a 4,500 ETB total, then confirmed through the live admin UI.
+- The room confirmation PDF was stored privately and the secure PDF link opened in a new tab. The email provider accepted the confirmation to booking@harlahotel.com, with no recorded error. Inbox delivery is not yet verified.
+- Room test inventory release and restaurant test cleanup are still pending. No actual payment or guest stay occurred.
+- Room and event admin roles are separate; there are no shared active accounts. Event-admin sign-in is required for the remaining event approval tests.
+- `20260916173605_restaurant_server_only_submissions.sql` is prepared but NOT applied. Apply only after the new restaurant API is deployed and verified, then run the transaction/rollback privacy test.

@@ -26,7 +26,7 @@ function notice() {
 function summary() {
   return `<aside class="order-summary"><p class="eyebrow">${labels[orderType]}</p><h3>Your order</h3>
     ${selected().length?`<ul>${selected().map(i=>`<li>${i.quantity} × ${escape(i.name)} <strong>${money(Math.round(i.price*100)*i.quantity/100)}</strong></li>`).join('')}</ul>`:'<p>Choose food and drinks from the menu.</p>'}
-    <div class="order-total"><span>Menu total</span><strong>${money(total())}</strong></div>
+    <div class="summary-total"><span>Menu total</span><strong>${money(total())}</strong></div>
     <p>Prices include applicable taxes.${orderType==='delivery'?' Contact the hotel to confirm delivery availability and any delivery charge.':''}</p>
     ${state.step==='menu'?`<button class="btn btn-primary" type="button" data-checkout ${unavailable()?'disabled':''}>Continue to Details</button>`:''}</aside>`;
 }
@@ -76,7 +76,7 @@ function filterMenu() {
   if(!card.hidden) count++;
  });
  document.querySelectorAll('[data-category]').forEach(section=>{section.hidden=![...section.querySelectorAll('[data-menu-name]')].some(card=>!card.hidden);});
- const results=document.querySelector('#menu-results');if(results) results.textContent=count?`${count} menu items`:'No matching items. Try another search or category.';
+ const results=document.querySelector('#menu-results');if(results) results.textContent=count?`${count} menu ${count===1?'item':'items'}`:'No matching items. Try another search or category.';
 }
 function captureDetails() {
  const form=document.querySelector('#restaurant-order-form');if(!form)return;
