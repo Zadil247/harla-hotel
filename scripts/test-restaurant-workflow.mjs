@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {existsSync,readFileSync} from 'node:fs';
+import {restaurantMenuItems as menu} from '../src/restaurant-menu-data.js';
+import {normalizeRestaurantOrder,restaurantTransition} from '../server/restaurant-workflow.js';
+assert.equal(menu.length,155);
+assert.equal(new Set(menu.map(i=>i.id)).size,menu.length);
+assert.equal(menu.filter(i=>i.name==='Special Ful').length,1);
+assert.equal(menu.find(i=>i.name==='Special Ful').price,250);
+assert.equal(menu.find(i=>i.name==='Normal Tea').price,30);
+assert.equal(menu.find(i=>i.name==='Fish-Burger').price,400);
+for(const item of menu){assert(item.price>0);assert(!['Upper body','Lower body','Others'].includes(item.category));if(item.image)assert(existsSync(`.${item.image}`));}
+const input={orderNumber:'HRL-'+ 'a'.repeat(32),customerName:'Test Guest',phone:'0000000000',orderType:'Dine In',paymentMethod:'cash_at_hotel',items:[{id:'odoo-60',quantity:2,price:1,line_total:2}]};
+const order=normalizeRestaurantOrder(input);assert.equal(order.items[0].line_total,500);assert.equal(order.status,'pending');assert.equal(order.payment_status,'pay_at_hotel');
+for(const changed of [{items:[]},{items:[{id:'fake',quantity:1}]},{items:[{id:'odoo-60',quantity:0}]},{items:[{id:'odoo-60',quantity:1.5}]},{items:[{id:'odoo-60',quantity:51}]},{items:[...input.items,...input.items]},{orderType:'Delivery'},{paymentMethod:'CBE'},{phone:'bad'}])assert.throws(()=>normalizeRestaurantOrder({...input,...changed}));
+assert.equal(restaurantTransition({status:'pending'},'approve').status,'approved');
+assert.equal(restaurantTransition({status:'approved',odoo_status:'not_entered'},'kitchen').odoo_status,'entered');
+assert.throws(()=>restaurantTransition({status:'declined'},'approve'));
+const handler=(await import('../api/restaurant.js')).default;
+assert.equal((await handler.fetch(new Request('https://example.test/api/restaurant'))).status,405);
+assert.equal((await handler.fetch(new Request('https://example.test/api/restaurant',{method:'POST',headers:{'Content-Type':'application/json'},body:'{'}))).status,400);
+const build=readFileSync('scripts/build-static.mjs','utf8');assert(build.includes('restaurant-admin.html'));
+console.log('Restaurant checks passed: 155 menu items, imported prices/assets, trusted totals, invalid quantities, payment requirements, transitions, malformed requests.');

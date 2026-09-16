@@ -296,7 +296,7 @@ function dashboardShell(content) {
       <section class="admin-hero">
         <div>
           <p class="eyebrow">Room Admin</p>
-          <h1>Harla Hotel Room Bookings</h1>
+          <h1>Harla Hotel Room Bookings</h1><p><a href="./restaurant-admin.html">Restaurant Admin</a> · <a href="./event-admin.html">Events Admin</a></p>
           <p>Review room requests, verify payment evidence, manage date-aware capacity, and issue official confirmations.</p>
         </div>
         <img src="${images.logo}" alt="${siteConfig.brandName} logo" />

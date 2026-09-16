@@ -30,11 +30,11 @@ function orderStatusMessage(order) {
   }
 
   if (order.status === "approved" && order.odoo_status === "entered") {
-    return "Your order has been entered into our kitchen system.";
+    return "Your order has been sent to the kitchen.";
   }
 
   if (order.status === "approved") {
-    return "Approved. Entered into Odoo / kitchen system soon.";
+    return "Approved. The restaurant is preparing your order.";
   }
 
   return "Pending approval";
@@ -53,7 +53,7 @@ function orderResult(order) {
         <div><dt>Order type</dt><dd>${escapeHtml(order.order_type)}</dd></div>
         <div><dt>Payment status</dt><dd>${escapeHtml(order.payment_status || "-")}</dd></div>
         <div><dt>Order status</dt><dd>${escapeHtml(order.status)}</dd></div>
-        <div><dt>Kitchen system</dt><dd>${escapeHtml(order.odoo_status || "not_entered")}</dd></div>
+        <div><dt>Kitchen system</dt><dd>${order.odoo_status === "entered" ? "Sent to kitchen" : "Awaiting kitchen handoff"}</dd></div>
       </dl>
       <p>
         If you need help with this order, contact Harla Hotel and share your order number.

@@ -20,8 +20,6 @@ export const siteConfig = {
   // REPLACE: Add verified international transfer instructions here when Harla Hotel's account is ready.
   // Keep this empty until the hotel provides real bank, Wise, PayPal, or other transfer details.
   internationalTransferInstructions: "",
-  // REPLACE: Swap this placeholder with the real Odoo POS URL when Harla is ready to use it.
-  odooPosUrl: "ODOO_POS_URL_PLACEHOLDER",
 };
 
 export const whatsappLinks = {
@@ -338,66 +336,8 @@ export const menuPreview = [
 ];
 
 // REPLACE: Update restaurant menu names, categories, descriptions, and prices when the final menu is ready.
-export const restaurantMenuItems = [
-  {
-    id: "harari-breakfast",
-    category: "Breakfast",
-    name: "Harari Breakfast Plate",
-    description: "A warm breakfast plate with tea or coffee service.",
-    price: 350,
-  },
-  {
-    id: "ethiopian-breakfast",
-    category: "Breakfast",
-    name: "Traditional Ethiopian Breakfast",
-    description: "Classic morning flavors for hotel guests and walk-in customers.",
-    price: 320,
-  },
-  {
-    id: "special-lunch",
-    category: "Lunch",
-    name: "Harla Special Lunch",
-    description: "A generous lunch plate prepared for dine in, take away, or delivery.",
-    price: 520,
-  },
-  {
-    id: "grilled-meat",
-    category: "Lunch",
-    name: "Grilled Meat Plate",
-    description: "Grilled meat with sides and fresh accompaniments.",
-    price: 650,
-  },
-  {
-    id: "vegetarian-plate",
-    category: "Lunch",
-    name: "Vegetarian Plate",
-    description: "A satisfying vegetarian selection with local flavor.",
-    price: 420,
-  },
-  {
-    id: "fresh-juice",
-    category: "Drinks",
-    name: "Fresh Juice",
-    description: "Seasonal fresh juice prepared to order.",
-    price: 180,
-  },
-  {
-    id: "coffee-ceremony",
-    category: "Drinks",
-    name: "Coffee Ceremony",
-    description: "A relaxed coffee ceremony experience for dine-in guests.",
-    price: 300,
-  },
-  {
-    id: "tea",
-    category: "Drinks",
-    name: "Tea",
-    description: "Hot tea served fresh.",
-    price: 90,
-  },
-];
+export { restaurantMenuItems } from './restaurant-menu-data.js';
 
-// Delivery-only pastry options. Cookies are ordered in kilograms.
 export const deliveryPastryItems = [
   { id: "cake", name: "Cake" },
   { id: "cookies", name: "Cookies" },

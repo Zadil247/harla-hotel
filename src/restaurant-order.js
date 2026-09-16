@@ -1,591 +1,112 @@
-import { Footer, Navbar } from "./components.js?v=20260521-restaurant-workflow";
-import {
-  deliveryPastryItems,
-  images,
-  restaurantAddressAreas,
-  restaurantMenuItems,
-  restaurantPaymentMethods,
-  siteConfig,
-  whatsappLinks,
-} from "./data.js?v=20260521-restaurant-workflow";
-import {
-  backendSetupMessage,
-  createRestaurantOrder,
-  getRestaurantSettings,
-  isBackendReady,
-  uploadPaymentScreenshot,
-} from "./supabase-api.js?v=20260521-restaurant-rls-fix";
+import { Footer, Navbar } from './components.js?v=20260916-restaurant';
+import { images, restaurantAddressAreas, restaurantPaymentMethods, siteConfig, whatsappLinks } from './data.js';
+import { restaurantMenuItems } from './restaurant-menu-data.js';
+import { restaurantRequest } from './restaurant-api.js';
 
-const app = document.querySelector("#restaurant-order-app");
-const orderTypes = [
-  {
-    value: "dine_in",
-    label: "Dine In",
-    text: "Eat at Harla Restaurant and optionally request the VIP room.",
-  },
-  {
-    value: "take_away",
-    label: "Take Away",
-    text: "Order ahead and pick up from Harla Hotel after online payment.",
-  },
-  {
-    value: "delivery",
-    label: "Delivery",
-    text: "Send food and delivery-only pastries to your Harar address.",
-  },
-];
-
-const initialOrderType = new URLSearchParams(window.location.search).get("order");
-const normalizedInitialOrderType = initialOrderType === "takeaway" ? "take_away" : initialOrderType;
-const initialOrder = orderTypes.some((type) => type.value === normalizedInitialOrderType)
-  ? normalizedInitialOrderType
-  : "dine_in";
-
-const state = {
-  step: "menu",
-  orderType: initialOrder,
-  quantities: Object.fromEntries(restaurantMenuItems.map((item) => [item.id, 0])),
-  pastries: Object.fromEntries(
-    deliveryPastryItems.map((item) => [item.id, { kilograms: 0, level: "Level 1" }]),
-  ),
-  paymentChoice: initialOrder && initialOrder !== "dine_in" ? "online" : "cash_at_hotel",
-  restaurantSettings: {
-    ordering_available: true,
-    custom_message: "",
-  },
-  settingsLoaded: false,
-  submittedOrderNumber: "",
-};
-
-function formatEtb(amount) {
-  return `${new Intl.NumberFormat("en-US").format(amount)} ETB`;
+const app=document.querySelector('#restaurant-order-app');
+const labels={dine_in:'Dine In',take_away:'Take Away',delivery:'Delivery'};
+const requested=new URLSearchParams(location.search).get('order');
+const orderType=requested==='takeaway'?'take_away':Object.hasOwn(labels,requested)?requested:'dine_in';
+const state={step:'menu',quantities:{},category:'All',search:'',settings:null,loading:true,error:'',busy:false,
+  paymentChoice:orderType==='dine_in'?'cash_at_hotel':'online',orderNumber:`HRL-${crypto.randomUUID().replaceAll('-','')}`,
+  details:{},proof:null};
+const escape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+const money=value=>`${new Intl.NumberFormat('en-ET',{maximumFractionDigits:2}).format(value)} ETB`;
+const selected=()=>restaurantMenuItems.filter(i=>state.quantities[i.id]>0).map(i=>({...i,quantity:state.quantities[i.id]}));
+const total=()=>selected().reduce((sum,i)=>sum+Math.round(i.price*100)*i.quantity,0)/100;
+const online=()=>orderType!=='dine_in'||state.paymentChoice==='online';
+const unavailable=()=>state.loading||!state.settings?.ordering_available;
+const categories=[...new Set(restaurantMenuItems.map(i=>i.category))];
+function notice() {
+  if(state.loading) return '<p role="status">Checking restaurant availability…</p>';
+  if(!state.settings) return '<p role="alert">Restaurant availability could not be loaded. Please refresh or contact the hotel.</p>';
+  if(!state.settings.ordering_available) return `<p class="order-unavailable-notice" role="status">${escape(state.settings.custom_message||'Restaurant ordering is currently unavailable.')}</p>`;
+  return '';
 }
-
-function orderTypeLabel(value = state.orderType) {
-  return orderTypes.find((type) => type.value === value)?.label || "";
+function summary() {
+  return `<aside class="order-summary"><p class="eyebrow">${labels[orderType]}</p><h3>Your order</h3>
+    ${selected().length?`<ul>${selected().map(i=>`<li>${i.quantity} × ${escape(i.name)} <strong>${money(Math.round(i.price*100)*i.quantity/100)}</strong></li>`).join('')}</ul>`:'<p>Choose food and drinks from the menu.</p>'}
+    <div class="order-total"><span>Menu total</span><strong>${money(total())}</strong></div>
+    <p>Prices include applicable taxes.${orderType==='delivery'?' Contact the hotel to confirm delivery availability and any delivery charge.':''}</p>
+    ${state.step==='menu'?`<button class="btn btn-primary" type="button" data-checkout ${unavailable()?'disabled':''}>Continue to Details</button>`:''}</aside>`;
 }
-
-function vipRoomWhatsAppUrl() {
-  const message =
-    "Hello Harla Hotel, I would like to request the VIP restaurant room. Please send me availability and details.";
-  return `https://wa.me/REPLACE_WITH_HOTEL_WHATSAPP_NUMBER?text=${encodeURIComponent(message)}`;
+function card(item) {
+  const quantity=state.quantities[item.id]||0;
+  return `<article class="menu-item-card" data-menu-name="${escape(item.name.toLowerCase())}" data-menu-category="${escape(item.category)}">
+    ${item.image?`<img class="restaurant-menu-image" src="${item.image}" alt="${escape(item.name)}" loading="lazy" width="320" height="200">`:''}
+    <div><p class="card-kicker">${escape(item.category)}</p><h3>${escape(item.name)}</h3>${item.description?`<p>${escape(item.description)}</p>`:''}</div>
+    <div class="menu-item-footer"><strong>${money(item.price)}</strong><div class="quantity-control" aria-label="${escape(item.name)} quantity">
+    <button type="button" data-quantity="${item.id}" data-direction="-1" aria-label="Remove ${escape(item.name)}" ${quantity===0?'disabled':''}>−</button>
+    <span aria-live="polite">${quantity}</span><button type="button" data-quantity="${item.id}" data-direction="1" aria-label="Add ${escape(item.name)}" ${quantity>=50?'disabled':''}>+</button></div></div></article>`;
 }
-
-function paymentMethodLabel(value) {
-  return restaurantPaymentMethods.find((method) => method.value === value)?.label || value;
+function menu() {
+ return `<section class="order-workspace"><div class="order-main">${notice()}
+   <div class="section-heading"><p class="eyebrow">${labels[orderType]}</p><h2>Food, drinks & pastries</h2><p>Choose your favourites from Harla Restaurant.</p></div>
+   <div class="restaurant-menu-filters"><label>Search menu<input type="search" id="menu-search" value="${escape(state.search)}" placeholder="Find a dish or drink"></label>
+   <label>Category<select id="menu-category"><option>All</option>${categories.map(c=>`<option ${state.category===c?'selected':''}>${escape(c)}</option>`).join('')}</select></label></div>
+   ${orderType==='dine_in'?`<a class="text-link" href="${whatsappLinks.vipRoom}" target="_blank" rel="noopener">Request the VIP restaurant room</a>`:''}
+   <p id="menu-results" role="status"></p>
+   ${categories.map((c,index)=>`<section class="menu-category" data-category="${escape(c)}" aria-labelledby="menu-category-${index}"><h3 id="menu-category-${index}">${escape(c)}</h3><div class="menu-grid">${restaurantMenuItems.filter(i=>i.category===c).map(card).join('')}</div></section>`).join('')}
+   <a class="btn btn-light" href="./index.html#restaurant-order-options">Change Order Type</a>
+   <p class="form-status" role="status">${escape(state.error)}</p></div>${summary()}</section>`;
 }
-
-function orderingUnavailable() {
-  return state.settingsLoaded && !state.restaurantSettings.ordering_available;
+function details() {
+ const d=state.details;
+ return `<section class="order-workspace"><form class="booking-form order-details-form" id="restaurant-order-form">${notice()}
+   <div class="section-heading"><h2>Customer details & payment</h2><p>The restaurant will review your order before confirming it.</p></div>
+   <div class="form-grid"><label>Customer name<input name="customerName" value="${escape(d.customerName)}" autocomplete="name" maxlength="160" required></label>
+   <label>Phone number<input name="phone" value="${escape(d.phone)}" type="tel" autocomplete="tel" maxlength="40" required></label>
+   ${orderType==='delivery'?`<label>Address area<select name="addressArea" required><option value="">Select area</option>${restaurantAddressAreas.map(a=>`<option ${d.addressArea===a?'selected':''}>${escape(a)}</option>`).join('')}</select></label><label>Delivery address / directions<input name="customAddress" value="${escape(d.customAddress)}" maxlength="500" required></label>`:''}</div>
+   <div class="payment-section"><h3>Payment</h3>${orderType==='dine_in'?`<label>How would you like to pay?<select name="paymentChoice" id="payment-choice"><option value="cash_at_hotel" ${!online()?'selected':''}>Pay at the hotel</option><option value="online" ${online()?'selected':''}>Transfer payment</option></select></label>`:'<p>Transfer payment is required for take-away and delivery orders.</p>'}
+   ${online()?`<label>Payment method<select name="paymentMethod" id="payment-method">${restaurantPaymentMethods.map(m=>`<option value="${m.label}" ${d.paymentMethod===m.label?'selected':''}>${m.label}</option>`).join('')}</select></label>
+   <p class="payment-instructions" id="payment-instructions">${escape((restaurantPaymentMethods.find(m=>m.label===d.paymentMethod)||restaurantPaymentMethods[0]).instructions)}</p>
+   <label>Transaction reference<input name="paymentReference" value="${escape(d.paymentReference)}" maxlength="160"></label>
+   <label>Payment screenshot<input name="paymentScreenshot" type="file" accept="image/jpeg,image/png,image/webp" ${state.proof?'':'required'}></label>
+   <p>${state.proof?`Selected: ${escape(state.proof.name)}. Choose another image to replace it.`:'JPEG, PNG or WebP, up to 3 MB.'}</p>`:''}</div>
+   <div class="order-actions"><button class="btn btn-light" type="button" data-back>Back to Menu</button><button class="btn btn-primary" type="submit" ${unavailable()||state.busy?'disabled':''}>${state.busy?'Submitting…':'Submit Order'}</button></div>
+   <p class="form-status" role="status">${escape(state.error)}</p></form>${summary()}</section>`;
 }
-
-function availabilityNotice() {
-  if (!orderingUnavailable()) {
-    return "";
-  }
-
-  return `
-    <div class="order-unavailable-notice" role="status">
-      <strong>Restaurant ordering is currently unavailable.</strong>
-      <p>${state.restaurantSettings.custom_message || "Ordering is unavailable at the moment. Please call us for more info."}</p>
-    </div>
-  `;
+function success() {
+ return `<section class="order-panel success-card"><p class="eyebrow">Order received</p><h2>Thank you for ordering with Harla.</h2><p>Your order is pending restaurant review${online()?' and payment verification':''}.</p><div class="order-number-card"><span>Order reference</span><strong>${state.orderNumber}</strong></div><div class="order-actions"><a class="btn btn-primary" href="./order-status.html?order=${state.orderNumber}">Check Order Status</a><a class="btn btn-light" href="./restaurant-order.html">Start Another Order</a></div></section>`;
 }
-
-function selectedItems() {
-  return restaurantMenuItems
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      price: item.price,
-      quantity: state.quantities[item.id] || 0,
-      line_total: (state.quantities[item.id] || 0) * item.price,
-    }))
-    .filter((item) => item.quantity > 0);
+function filterMenu() {
+ let count=0;
+ document.querySelectorAll('[data-menu-name]').forEach(card=>{
+  card.hidden=!(state.category==='All'||card.dataset.menuCategory===state.category)||!card.dataset.menuName.includes(state.search.trim().toLowerCase());
+  if(!card.hidden) count++;
+ });
+ document.querySelectorAll('[data-category]').forEach(section=>{section.hidden=![...section.querySelectorAll('[data-menu-name]')].some(card=>!card.hidden);});
+ const results=document.querySelector('#menu-results');if(results) results.textContent=count?`${count} menu items`:'No matching items. Try another search or category.';
 }
-
-function selectedPastries() {
-  if (state.orderType !== "delivery") {
-    return [];
-  }
-
-  return deliveryPastryItems
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      kilograms: Number(state.pastries[item.id]?.kilograms || 0),
-      level: state.pastries[item.id]?.level || "Level 1",
-    }))
-    .filter((item) => item.kilograms > 0);
+function captureDetails() {
+ const form=document.querySelector('#restaurant-order-form');if(!form)return;
+ const values=Object.fromEntries(new FormData(form));delete values.paymentScreenshot;state.details=values;
 }
-
-function estimatedTotal() {
-  return selectedItems().reduce((total, item) => total + item.line_total, 0);
+function render() {
+ app.innerHTML=`${Navbar('restaurant')}<main class="restaurant-order-shell" id="restaurant-order-main"><section class="restaurant-order-hero compact-hero" style="--page-hero-image:url('${images.restaurant}')"><div class="page-hero-content"><p class="eyebrow">Harla Restaurant</p><h1>Restaurant Menu</h1><p>${labels[orderType]} · Fresh favourites, warm hospitality.</p></div></section><div class="order-container">${state.step==='menu'?menu():state.step==='details'?details():success()}</div></main>${Footer()}`;
+ document.querySelector('[data-header]')?.classList.add('is-scrolled');
+ document.querySelector('[data-nav-toggle]')?.addEventListener('click',event=>{const b=event.currentTarget;b.setAttribute('aria-expanded',String(b.getAttribute('aria-expanded')!=='true'));document.querySelector('[data-nav-menu]').classList.toggle('is-open');});
+ document.querySelector('#menu-search')?.addEventListener('input',e=>{state.search=e.target.value;filterMenu();});
+ document.querySelector('#menu-category')?.addEventListener('change',e=>{state.category=e.target.value;filterMenu();});
+ document.querySelectorAll('[data-quantity]').forEach(button=>button.addEventListener('click',()=>{const {quantity:id,direction}=button.dataset;state.quantities[id]=Math.max(0,Math.min(50,(state.quantities[id]||0)+Number(direction)));render();document.querySelector(`[data-quantity="${id}"][data-direction="${direction}"]`)?.focus({preventScroll:true});}));
+ document.querySelector('[data-checkout]')?.addEventListener('click',()=>{if(!selected().length){state.error='Choose at least one menu item.';render();return;}state.error='';state.step='details';render();document.querySelector('#restaurant-order-main').scrollIntoView();});
+ document.querySelector('[data-back]')?.addEventListener('click',()=>{captureDetails();state.step='menu';state.error='';render();});
+ document.querySelector('#payment-choice')?.addEventListener('change',e=>{captureDetails();state.paymentChoice=e.target.value;render();});
+ document.querySelector('#payment-method')?.addEventListener('change',e=>{state.details.paymentMethod=e.target.value;document.querySelector('#payment-instructions').textContent=restaurantPaymentMethods.find(m=>m.label===e.target.value)?.instructions||'';});
+ document.querySelector('[name="paymentScreenshot"]')?.addEventListener('change',e=>{state.proof=e.target.files[0]||state.proof;});
+ document.querySelector('#restaurant-order-form')?.addEventListener('submit',submit);
+ if(state.step==='menu') filterMenu();
 }
-
-function groupedMenu() {
-  return restaurantMenuItems.reduce((groups, item) => {
-    groups[item.category] ||= [];
-    groups[item.category].push(item);
-    return groups;
-  }, {});
+async function fileData(file) {
+ if(!file||file.size>3*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)) throw Error('Upload a JPEG, PNG or WebP payment screenshot up to 3 MB.');
+ return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error('The payment screenshot could not be read.'));reader.onload=()=>resolve({data:String(reader.result).split(',')[1]});reader.readAsDataURL(file);});
 }
-
-function orderSteps() {
-  const steps = [
-    ["menu", "Menu"],
-    ["details", "Details & Payment"],
-  ];
-
-  return `
-    <div class="order-steps" aria-label="Restaurant order steps">
-      ${steps
-        .map(
-          ([key, label], index) => `
-            <span class="${state.step === key ? "is-active" : ""}">
-              <strong>${index + 1}</strong>${label}
-            </span>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
+async function submit(event) {
+ event.preventDefault();if(state.busy)return;captureDetails();state.busy=true;state.error='';render();
+ try {
+  const order={...state.details,orderNumber:state.orderNumber,orderType:labels[orderType],items:selected().map(i=>({id:i.id,quantity:i.quantity})),paymentMethod:online()?(state.details.paymentMethod||restaurantPaymentMethods[0].label):'cash_at_hotel',paymentScreenshot:online()?await fileData(state.proof):null};
+  const saved=await restaurantRequest('create',{order});state.orderNumber=saved.order.order_number;state.step='success';
+ }catch(error){state.error=error.message;}finally{state.busy=false;render();}
 }
-
-function menuItemCard(item) {
-  const quantity = state.quantities[item.id] || 0;
-
-  return `
-    <article class="menu-item-card">
-      <div>
-        <p class="card-kicker">${item.category}</p>
-        <h3>${item.name}</h3>
-        <p>${item.description}</p>
-      </div>
-      <div class="menu-item-footer">
-        <strong>${formatEtb(item.price)}</strong>
-        <div class="quantity-control" aria-label="${item.name} quantity">
-          <button type="button" data-quantity="${item.id}" data-direction="-1">-</button>
-          <span>${quantity}</span>
-          <button type="button" data-quantity="${item.id}" data-direction="1">+</button>
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-function pastryCard(item) {
-  const pastry = state.pastries[item.id];
-
-  return `
-    <article class="menu-item-card pastry-card">
-      <div>
-        <p class="card-kicker">Delivery pastry</p>
-        <h3>${item.name}</h3>
-        <p>${item.name === "Cookies" ? "Cookies must be ordered in kilograms." : "Choose kilograms and pastry level."}</p>
-      </div>
-      <div class="pastry-controls">
-        <label>
-          Kilograms
-          <input type="number" min="0" step="0.5" value="${pastry.kilograms}" data-pastry-kg="${item.id}" />
-        </label>
-        <label>
-          Level
-          <select data-pastry-level="${item.id}">
-            ${["Level 1", "Level 2", "Level 3"]
-              .map((level) => `<option ${pastry.level === level ? "selected" : ""}>${level}</option>`)
-              .join("")}
-          </select>
-        </label>
-      </div>
-    </article>
-  `;
-}
-
-function orderSummary() {
-  const items = selectedItems();
-  const pastries = selectedPastries();
-
-  return `
-    <aside class="order-summary">
-      <p class="eyebrow">${orderTypeLabel()}</p>
-      <h3>Current Order</h3>
-      ${
-        items.length
-          ? `<ul>${items.map((item) => `<li>${item.quantity} x ${item.name} <strong>${formatEtb(item.line_total)}</strong></li>`).join("")}</ul>`
-          : "<p>No food or drink items selected yet.</p>"
-      }
-      ${
-        pastries.length
-          ? `<div class="pastry-summary"><strong>Delivery pastries</strong><ul>${pastries
-              .map((item) => `<li>${item.name}: ${item.kilograms} kg, ${item.level}</li>`)
-              .join("")}</ul></div>`
-          : ""
-      }
-      <div class="summary-total">
-        <span>Food & drink total</span>
-        <strong>${formatEtb(estimatedTotal())}</strong>
-      </div>
-      <small>Pastry pricing is confirmed by Harla Hotel after the order request.</small>
-    </aside>
-  `;
-}
-
-function renderMenuStep(message = "") {
-  const groups = groupedMenu();
-
-  return `
-    ${orderSteps()}
-    <section class="order-workspace">
-      <div class="order-main">
-        ${availabilityNotice()}
-        <div class="section-heading">
-          <p class="eyebrow">${orderTypeLabel()} Order</p>
-          <h2>Choose food and drinks</h2>
-          <p>Add menu items and quantities. Delivery customers can also add pastries by kilogram.</p>
-        </div>
-        ${
-          state.orderType === "dine_in"
-            ? `<a class="btn btn-whatsapp vip-whatsapp-button" href="${vipRoomWhatsAppUrl()}" target="_blank" rel="noopener">Request VIP Room on WhatsApp</a>`
-            : ""
-        }
-        ${Object.entries(groups)
-          .map(
-            ([category, items]) => `
-              <section class="menu-category" aria-labelledby="category-${category.toLowerCase()}">
-                <h3 id="category-${category.toLowerCase()}">${category}</h3>
-                <div class="menu-grid">${items.map(menuItemCard).join("")}</div>
-              </section>
-            `,
-          )
-          .join("")}
-        ${
-          state.orderType === "delivery"
-            ? `
-              <section class="menu-category pastry-section" aria-labelledby="pastry-title">
-                <h3 id="pastry-title">Delivery Pastries</h3>
-                <p>Cake, cookies, pastries, and cupcakes are available for delivery orders only.</p>
-                <div class="menu-grid">${deliveryPastryItems.map(pastryCard).join("")}</div>
-              </section>
-            `
-            : ""
-        }
-        <div class="order-actions">
-          <a class="btn btn-light" href="./index.html#restaurant-order-options">Change Order Type</a>
-          <button class="btn btn-primary" type="button" data-confirm-menu ${orderingUnavailable() ? "disabled" : ""}>Confirm Order</button>
-        </div>
-        <p class="form-status" role="status" aria-live="polite">${message}</p>
-      </div>
-      ${orderSummary()}
-    </section>
-  `;
-}
-
-function paymentFields() {
-  const onlineRequired = state.orderType !== "dine_in";
-
-  return `
-    <div class="payment-section">
-      <h3>Payment</h3>
-      ${
-        state.orderType === "dine_in"
-          ? `
-            <div class="payment-options">
-              <label><input type="radio" name="paymentChoice" value="online" ${state.paymentChoice === "online" ? "checked" : ""} /> Pay Online Now</label>
-              <label><input type="radio" name="paymentChoice" value="cash_at_hotel" ${state.paymentChoice === "cash_at_hotel" ? "checked" : ""} /> Pay Cash at Hotel</label>
-            </div>
-          `
-          : `<p class="payment-note">${orderTypeLabel()} orders require online payment before submission.</p>`
-      }
-      <div data-online-payment ${!onlineRequired && state.paymentChoice !== "online" ? "hidden" : ""}>
-        <label>
-          Payment method
-          <select name="paymentMethod" id="payment-method">
-            ${restaurantPaymentMethods
-              .map((method) => `<option value="${method.value}">${method.label}</option>`)
-              .join("")}
-          </select>
-        </label>
-        <div class="payment-instructions" data-payment-instructions>
-          ${restaurantPaymentMethods[0].instructions}
-        </div>
-        <label>
-          Payment reference / transaction ID
-          <input name="paymentReference" type="text" placeholder="Optional CBE, Telebirr, or E-Birr transaction ID" />
-        </label>
-        <label>
-          Payment screenshot <span class="optional-field">optional</span>
-          <input name="paymentScreenshot" type="file" accept="image/*" />
-        </label>
-      </div>
-    </div>
-  `;
-}
-
-function renderDetailsStep(message = "") {
-  const needsDeliveryAddress = state.orderType === "delivery";
-
-  return `
-    ${orderSteps()}
-    <section class="order-workspace">
-      <form class="booking-form order-details-form" id="restaurant-order-form">
-        ${availabilityNotice()}
-        <div class="section-heading">
-          <p class="eyebrow">${orderTypeLabel()} Details</p>
-          <h2>Customer details and payment</h2>
-          <p>Orders are submitted to Harla Hotel after details and payment requirements are complete.</p>
-        </div>
-        <div class="form-grid">
-          <label>
-            Customer name
-            <input name="customerName" type="text" autocomplete="name" required />
-          </label>
-          <label>
-            Phone number
-            <input name="phone" type="tel" autocomplete="tel" required />
-          </label>
-          ${
-            needsDeliveryAddress
-              ? `
-                <label>
-                  Address area
-                  <select name="addressArea" id="address-area" required>
-                    <option value="">Select address area</option>
-                    ${restaurantAddressAreas.map((area) => `<option>${area}</option>`).join("")}
-                  </select>
-                </label>
-                <label data-custom-address hidden>
-                  Custom address
-                  <input name="customAddress" type="text" placeholder="Write your address" />
-                </label>
-              `
-              : ""
-          }
-        </div>
-        ${paymentFields()}
-        <div class="order-actions">
-          <button class="btn btn-light" type="button" data-back-to-menu>Back to Menu</button>
-          <button class="btn btn-primary" type="submit" ${orderingUnavailable() ? "disabled" : ""}>Submit Order</button>
-        </div>
-        <p class="form-status" role="status" aria-live="polite">${message}</p>
-      </form>
-      ${orderSummary()}
-    </section>
-  `;
-}
-
-function renderSuccess() {
-  const statusHref = `./order-status.html?order=${encodeURIComponent(state.submittedOrderNumber)}`;
-
-  return `
-    ${orderSteps()}
-    <section class="order-panel success-card">
-      <p class="eyebrow">Order Submitted</p>
-      <h2>Thank you. Harla Hotel received your order.</h2>
-      <div class="order-number-card">
-        <span>Your order number</span>
-        <strong>${state.submittedOrderNumber}</strong>
-      </div>
-      <p>Your order is pending review. If payment was submitted online, the team will verify the transaction.</p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="${statusHref}">Check Order Status</a>
-        <a class="btn btn-primary" href="./restaurant-order.html">Start Another Order</a>
-        <a class="btn btn-whatsapp" href="${whatsappLinks.table}">Contact on WhatsApp</a>
-      </div>
-    </section>
-  `;
-}
-
-function render(message = "") {
-  const content =
-    state.step === "menu"
-      ? renderMenuStep(message)
-      : state.step === "success"
-        ? renderSuccess()
-        : renderDetailsStep(message);
-
-  app.innerHTML = `
-    ${Navbar("restaurant")}
-    <main id="restaurant-order-main" class="restaurant-order-shell">
-      <section class="restaurant-order-hero" style="--page-hero-image: url('${images.restaurant}')">
-        <div class="page-hero-content reveal is-visible">
-          <p class="eyebrow">Harla Restaurant</p>
-          <h1>Restaurant Menu</h1>
-          <p>${orderTypeLabel()} is selected. Choose your meals, quantities, and continue to details.</p>
-        </div>
-      </section>
-      <div class="order-container">${content}</div>
-    </main>
-    ${Footer()}
-  `;
-
-  document.querySelector("[data-header]")?.classList.add("is-scrolled");
-  bindEvents();
-}
-
-function bindNav() {
-  const navToggle = document.querySelector("[data-nav-toggle]");
-  const navMenu = document.querySelector("[data-nav-menu]");
-
-  navToggle?.addEventListener("click", () => {
-    const expanded = navToggle.getAttribute("aria-expanded") === "true";
-    navToggle.setAttribute("aria-expanded", String(!expanded));
-    navMenu.classList.toggle("is-open");
-  });
-}
-
-function bindEvents() {
-  bindNav();
-
-  document.querySelector("[data-back-to-menu]")?.addEventListener("click", () => {
-    state.step = "menu";
-    render();
-  });
-
-  document.querySelector("[data-confirm-menu]")?.addEventListener("click", () => {
-    if (orderingUnavailable()) {
-      render(state.restaurantSettings.custom_message || "Ordering is unavailable at the moment.");
-      return;
-    }
-
-    if (!selectedItems().length && !selectedPastries().length) {
-      render("Please select at least one menu item before confirming.");
-      return;
-    }
-    state.step = "details";
-    render();
-  });
-
-  document.querySelectorAll("[data-quantity]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const itemId = button.dataset.quantity;
-      const direction = Number(button.dataset.direction);
-      state.quantities[itemId] = Math.max(0, (state.quantities[itemId] || 0) + direction);
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-pastry-kg]").forEach((input) => {
-    input.addEventListener("input", () => {
-      state.pastries[input.dataset.pastryKg].kilograms = Math.max(0, Number(input.value || 0));
-    });
-  });
-
-  document.querySelectorAll("[data-pastry-level]").forEach((select) => {
-    select.addEventListener("change", () => {
-      state.pastries[select.dataset.pastryLevel].level = select.value;
-    });
-  });
-
-  document.querySelectorAll("input[name='paymentChoice']").forEach((input) => {
-    input.addEventListener("change", () => {
-      state.paymentChoice = input.value;
-      render();
-    });
-  });
-
-  const addressArea = document.querySelector("#address-area");
-  const customAddress = document.querySelector("[data-custom-address]");
-  addressArea?.addEventListener("change", () => {
-    customAddress.hidden = addressArea.value !== "Other";
-  });
-
-  const paymentMethod = document.querySelector("#payment-method");
-  const instructions = document.querySelector("[data-payment-instructions]");
-  paymentMethod?.addEventListener("change", () => {
-    const method = restaurantPaymentMethods.find((item) => item.value === paymentMethod.value);
-    instructions.textContent = method?.instructions || "";
-  });
-
-  document.querySelector("#restaurant-order-form")?.addEventListener("submit", submitOrder);
-}
-
-async function submitOrder(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const status = form.querySelector(".form-status");
-  const rawFormData = new FormData(form);
-  const formData = Object.fromEntries(rawFormData.entries());
-  const paymentScreenshot = rawFormData.get("paymentScreenshot");
-  const onlinePaymentRequired = state.orderType !== "dine_in" || state.paymentChoice === "online";
-
-  if (!formData.customerName?.trim() || !formData.phone?.trim()) {
-    status.textContent = "Please enter customer name and phone number.";
-    return;
-  }
-
-  if (orderingUnavailable()) {
-    status.textContent = state.restaurantSettings.custom_message || "Ordering is unavailable at the moment.";
-    return;
-  }
-
-  if (state.orderType === "delivery" && !formData.addressArea) {
-    status.textContent = "Please select the delivery address area.";
-    return;
-  }
-
-  if (state.orderType === "delivery" && formData.addressArea === "Other" && !formData.customAddress?.trim()) {
-    status.textContent = "Please write the custom address.";
-    return;
-  }
-
-  if (onlinePaymentRequired && !formData.paymentMethod) {
-    status.textContent = "Please choose a payment method.";
-    return;
-  }
-
-  const orderPayload = {
-    customerName: formData.customerName,
-    phone: formData.phone,
-    orderType: orderTypeLabel(),
-    addressArea: state.orderType === "delivery" ? formData.addressArea : "",
-    customAddress: state.orderType === "delivery" ? formData.customAddress : "",
-    items: selectedItems(),
-    pastryItems: selectedPastries(),
-    paymentMethod: onlinePaymentRequired ? paymentMethodLabel(formData.paymentMethod) : "cash_at_hotel",
-    paymentReference: onlinePaymentRequired ? formData.paymentReference || "" : "",
-    paymentStatus: onlinePaymentRequired ? "submitted_for_verification" : "pay_at_hotel",
-    paymentScreenshotUrl: "",
-  };
-
-  if (!isBackendReady()) {
-    console.info("Harla Hotel restaurant order", {
-      endpoint: siteConfig.bookingEndpoint,
-      orderPayload: {
-        ...orderPayload,
-        paymentScreenshot: paymentScreenshot?.name || "",
-      },
-    });
-    status.textContent = backendSetupMessage();
-    return;
-  }
-
-  try {
-    status.textContent = "Submitting order...";
-    if (onlinePaymentRequired && paymentScreenshot instanceof File && paymentScreenshot.name) {
-      orderPayload.paymentScreenshotUrl = await uploadPaymentScreenshot(paymentScreenshot);
-    }
-    const savedOrder = await createRestaurantOrder(orderPayload);
-    state.submittedOrderNumber = savedOrder.order_number;
-    state.step = "success";
-    render();
-  } catch (error) {
-    status.textContent = error.message || "Sorry, we could not submit your order. Please try WhatsApp.";
-  }
-}
-
-async function init() {
-  if (isBackendReady()) {
-    try {
-      state.restaurantSettings = await getRestaurantSettings();
-    } catch (error) {
-      console.warn("Could not load restaurant ordering settings", error);
-    }
-  }
-
-  state.settingsLoaded = true;
-  render();
-}
-
-init();
+render();
+try {state.settings=(await restaurantRequest('settings')).settings;}catch{}finally{state.loading=false;render();}

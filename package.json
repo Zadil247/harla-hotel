@@ -9,7 +9,8 @@
     "test:event-workflow": "node scripts/test-event-workflow.mjs",
     "test:event-pdf": "node scripts/test-event-pdf.mjs",
     "test:room-workflow": "node scripts/test-room-workflow.mjs",
-    "test:room-pdf": "node scripts/test-room-pdf.mjs"
+    "test:room-pdf": "node scripts/test-room-pdf.mjs",
+    "test:restaurant-workflow": "node scripts/test-restaurant-workflow.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.8",

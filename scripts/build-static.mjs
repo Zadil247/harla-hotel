@@ -20,6 +20,7 @@ const rootFiles = [
   "index.html",
   "order-status.html",
   "restaurant-menu.html",
+  "restaurant-admin.html",
   "restaurant-order.html",
   "restaurant.html",
   "room-booking.html",
