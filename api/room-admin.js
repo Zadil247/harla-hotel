@@ -1,6 +1,7 @@
 import { requestingRoomAdmin } from "../server/admin-auth.js";
 import {
   adminRoomRows,
+  roomAvailabilityForDates,
   transitionRoomBooking,
   updateRoomInventoryCapacity,
 } from "../server/room-booking-service.js";
@@ -11,6 +12,18 @@ import { getSupabaseAdmin } from "../server/supabase-admin.js";
 
 function response(body, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+const staleBookingMessage = "This booking changed while you were reviewing it. Refresh and try again.";
+
+export function roomAdminErrorDetails(error = {}) {
+  const stale = error.code === "40001" || error.code === "stale_room_booking";
+  return {
+    status: error.status || (stale ? 409 : 400),
+    message: stale
+      ? staleBookingMessage
+      : error.message || "The Room Admin action failed.",
+  };
 }
 
 async function requestJson(request) {
@@ -56,20 +69,42 @@ export default {
       }
 
       if (body.action === "dashboard") {
-        const [bookings, inventoryResult] = await Promise.all([
+        const availabilityPromise = body.checkIn && body.checkOut
+          ? roomAvailabilityForDates(supabase, body.checkIn, body.checkOut)
+          : Promise.resolve([]);
+        const [bookings, inventoryResult, availability] = await Promise.all([
           adminRoomRows(supabase),
           supabase
             .from("room_inventory")
             .select("id, room_type, total_rooms, sellable_rooms, available_rooms, updated_at")
             .order("room_type", { ascending: true }),
+          availabilityPromise,
         ]);
         if (inventoryResult.error) throw inventoryResult.error;
-        return response({ bookings, inventory: inventoryResult.data || [] });
+        return response({
+          bookings,
+          inventory: inventoryResult.data || [],
+          availability,
+          availabilityRange: body.checkIn && body.checkOut
+            ? { checkIn: body.checkIn, checkOut: body.checkOut }
+            : null,
+        });
+      }
+
+      if (body.action === "availability") {
+        const availability = await roomAvailabilityForDates(supabase, body.checkIn, body.checkOut);
+        return response({ availability, availabilityRange: { checkIn: body.checkIn, checkOut: body.checkOut } });
       }
 
       if (body.action === "transition") {
         const booking = await bookingById(supabase, body.bookingId);
-        let updated = await transitionRoomBooking(supabase, booking, body.transition, body.reason);
+        let updated = await transitionRoomBooking(
+          supabase,
+          booking,
+          body.transition,
+          body.reason,
+          admin.id,
+        );
         let confirmation = null;
         let email = { sent: false, reason: "not_attempted" };
 
@@ -143,11 +178,8 @@ export default {
         code: error.code || "room_admin_api_error",
         message: error.message || "Room Admin API failed.",
       });
-      const stale = error.status === 409 || error.code === "40001";
-      return response(
-        { error: stale ? "This booking changed while you were reviewing it. Refresh and try again." : error.message || "The Room Admin action failed." },
-        error.status || (stale ? 409 : 400),
-      );
+      const details = roomAdminErrorDetails(error);
+      return response({ error: details.message }, details.status);
     }
   },
 };

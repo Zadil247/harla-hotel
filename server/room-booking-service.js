@@ -188,8 +188,32 @@ export async function adminRoomRows(supabase) {
     .order("created_at", { ascending: false });
   if (error) throw error;
 
+  const releaseActorIds = [...new Set(
+    (data || [])
+      .map((booking) => booking.inventory_released_by)
+      .filter(Boolean),
+  )];
+  const releaseActors = new Map();
+  if (releaseActorIds.length) {
+    const { data: admins, error: adminError } = await supabase
+      .from("room_admin_users")
+      .select("user_id, email, full_name, role")
+      .in("user_id", releaseActorIds);
+    if (adminError) throw adminError;
+    (admins || []).forEach((admin) => releaseActors.set(admin.user_id, admin));
+  }
+
   return Promise.all((data || []).map(async (booking) => ({
     ...booking,
+    inventory_release_admin: releaseActors.get(booking.inventory_released_by) || (
+      booking.inventory_released_by_email
+        ? {
+            user_id: booking.inventory_released_by,
+            email: booking.inventory_released_by_email,
+            role: booking.inventory_released_by_role,
+          }
+        : null
+    ),
     payment_screenshot_display_url: await signedStorageUrl(
       supabase,
       paymentBucket,
@@ -204,12 +228,14 @@ export async function adminRoomRows(supabase) {
   })));
 }
 
-export async function transitionRoomBooking(supabase, booking, action, reason = "") {
-  const { data, error } = await supabase.rpc("transition_room_booking_v2", {
+export async function transitionRoomBooking(supabase, booking, action, reason = "", actorUserId) {
+  const normalizedAction = cleanRoomText(action).toLowerCase();
+  const { data, error } = await supabase.rpc("transition_room_booking_inventory_authority_v1", {
     p_booking_id: booking.id,
     p_expected_status: booking.status,
-    p_action: cleanRoomText(action).toLowerCase(),
+    p_action: normalizedAction,
     p_reason: cleanRoomText(reason) || null,
+    p_actor_user_id: cleanRoomText(actorUserId) || null,
   });
   if (error) {
     if (error.code === "40001" || /changed while/i.test(error.message || "")) {
@@ -217,6 +243,20 @@ export async function transitionRoomBooking(supabase, booking, action, reason = 
         "This booking changed while you were reviewing it. Refresh and try again.",
         409,
         "stale_room_booking",
+      );
+    }
+    if (error.code === "P0001" && normalizedAction === "restore_hold") {
+      throw new PublicError(
+        "Inventory cannot be restored because this room capacity is already committed for the selected dates.",
+        409,
+        "room_hold_restore_conflict",
+      );
+    }
+    if (error.code === "P0001" && ["confirm", "check_in"].includes(normalizedAction)) {
+      throw new PublicError(
+        "Restore this booking inventory hold before continuing.",
+        409,
+        "room_hold_required",
       );
     }
     if (error.code === "P0001" || /no longer available|capacity/i.test(error.message || "")) {
@@ -241,7 +281,6 @@ export async function updateRoomInventoryCapacity(supabase, id, payload) {
     .update({
       total_rooms: totalRooms,
       sellable_rooms: sellableRooms,
-      available_rooms: sellableRooms,
       updated_at: new Date().toISOString(),
     })
     .eq("id", cleanRoomText(id))

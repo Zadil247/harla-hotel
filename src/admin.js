@@ -1,16 +1,34 @@
-import { Navbar } from "./components.js?v=20260818-room-workflow-v2";
-import { images, siteConfig } from "./data.js?v=20260818-room-workflow-v2";
-import { requireRoomAdminAccess, roomAdminRequest } from "./room-api.js?v=20260818-room-workflow-v2";
+import { Navbar } from "./components.js?v=20260916-v1-room-inventory-authority";
+import { images, siteConfig } from "./data.js?v=20260916-v1-room-inventory-authority";
+import { requireRoomAdminAccess, roomAdminRequest } from "./room-api.js?v=20260916-v1-room-inventory-authority";
 import {
   backendSetupMessage,
   isBackendReady,
   signOutAdmin,
-} from "./supabase-api.js?v=20260818-room-workflow-v2";
+} from "./supabase-api.js?v=20260916-v1-room-inventory-authority";
 
 const app = document.querySelector("#admin-app");
 const authTimeoutMs = 18_000;
 let latestRoomBookings = [];
 let adminNotice = "";
+
+function ethiopiaDateOffset(days = 0) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Addis_Ababa",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  const source = new Date(`${values.year}-${values.month}-${values.day}T00:00:00Z`);
+  source.setUTCDate(source.getUTCDate() + days);
+  return source.toISOString().slice(0, 10);
+}
+
+let availabilityRange = {
+  checkIn: ethiopiaDateOffset(0),
+  checkOut: ethiopiaDateOffset(1),
+};
 
 const pendingStatuses = new Set([
   "pending",
@@ -18,8 +36,14 @@ const pendingStatuses = new Set([
   "pending_payment_review",
   "pending_payment_confirmation",
 ]);
-const confirmedStatuses = new Set(["approved", "confirmed", "checked_in", "checked_out"]);
-const inactiveStatuses = new Set(["declined", "rejected", "cancelled"]);
+const confirmedStatuses = new Set(["approved", "confirmed", "checked_in"]);
+const inactiveStatuses = new Set(["declined", "rejected", "cancelled", "checked_out"]);
+const inventoryBlockingStatuses = new Set([
+  ...pendingStatuses,
+  "approved",
+  "confirmed",
+  "checked_in",
+]);
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -78,6 +102,28 @@ function secureDocument(url, label, path = "") {
   `;
 }
 
+function inventoryHoldLabel(booking) {
+  return booking.inventory_hold_active
+    ? `<span class="inventory-hold-pill is-holding">Holding Room</span>`
+    : `<span class="inventory-hold-pill is-released">Released${booking.inventory_release_type === "manual_override" ? " by Admin" : ""}</span>`;
+}
+
+function inventoryAuthorityActions(booking) {
+  if (!inventoryBlockingStatuses.has(booking.status)) return "";
+  if (booking.inventory_hold_active) {
+    return `
+      <button class="status-action status-action-warning" type="button" data-room-transition="force_release" data-room-id="${booking.id}">
+        Force Release Inventory
+      </button>
+    `;
+  }
+  return `
+    <button class="status-action" type="button" data-room-transition="restore_hold" data-room-id="${booking.id}">
+      Restore Inventory Hold
+    </button>
+  `;
+}
+
 function roomBookingActions(booking, group) {
   const contactButton = booking.customer_contacted
     ? `<button class="status-action is-current" type="button" disabled>Customer Contacted</button>`
@@ -86,13 +132,32 @@ function roomBookingActions(booking, group) {
   if (group === "pending") {
     return `
       <div class="admin-actions">
-        <button class="status-action" type="button" data-room-transition="confirm" data-room-id="${booking.id}">Approve Booking</button>
+        ${booking.inventory_hold_active
+          ? `<button class="status-action" type="button" data-room-transition="confirm" data-room-id="${booking.id}">Approve Booking</button>`
+          : ""}
         <button class="status-action" type="button" data-room-transition="decline" data-room-id="${booking.id}">Decline Booking</button>
+        ${inventoryAuthorityActions(booking)}
         ${contactButton}
       </div>
     `;
   }
   if (group === "confirmed") {
+    return `
+      <div class="admin-actions">
+        ${["approved", "confirmed"].includes(booking.status) && booking.inventory_hold_active
+          ? `<button class="status-action" type="button" data-room-transition="check_in" data-room-id="${booking.id}">Mark Checked In</button>`
+          : ""}
+        ${["approved", "confirmed", "checked_in"].includes(booking.status)
+          ? `<button class="status-action" type="button" data-room-transition="check_out" data-room-id="${booking.id}">Check Out &amp; Release Room</button>`
+          : ""}
+        ${inventoryAuthorityActions(booking)}
+        <button class="status-action" type="button" data-room-pdf="${booking.id}">Download Confirmation PDF</button>
+        <button class="status-action" type="button" data-room-resend="${booking.id}">Resend Confirmation Email</button>
+        ${contactButton}
+      </div>
+    `;
+  }
+  if (booking.status === "checked_out") {
     return `
       <div class="admin-actions">
         <button class="status-action" type="button" data-room-pdf="${booking.id}">Download Confirmation PDF</button>
@@ -112,7 +177,10 @@ function roomBookingCard(booking, group) {
           <p class="eyebrow">${escapeHtml(booking.booking_number || "No booking reference")}</p>
           <h3>${escapeHtml(booking.full_name)}</h3>
         </div>
-        ${statusPill(booking.status)}
+        <div class="room-admin-state-pills">
+          ${statusPill(booking.status)}
+          ${inventoryHoldLabel(booking)}
+        </div>
       </div>
       <dl class="admin-order-details">
         <div><dt>Email</dt><dd>${escapeHtml(booking.email || "-")}</dd></div>
@@ -133,6 +201,19 @@ function roomBookingCard(booking, group) {
         <div><dt>Government ID</dt><dd>${secureDocument(booking.government_id_display_url, "government ID", booking.government_id_path)}</dd></div>
         ${booking.decline_reason ? `<div><dt>Decision reason</dt><dd>${escapeHtml(booking.decline_reason)}</dd></div>` : ""}
         ${booking.confirmed_at ? `<div><dt>Confirmed</dt><dd>${formatDate(booking.confirmed_at, true)}</dd></div>` : ""}
+        ${booking.actual_check_in_at ? `<div><dt>Actual check-in</dt><dd>${formatDate(booking.actual_check_in_at, true)}</dd></div>` : ""}
+        ${booking.actual_check_out_at ? `<div><dt>Actual check-out</dt><dd>${formatDate(booking.actual_check_out_at, true)}</dd></div>` : ""}
+        ${!booking.inventory_hold_active ? `
+          <div><dt>Inventory released</dt><dd>${formatDate(booking.inventory_released_at, true)}</dd></div>
+          <div><dt>Release type</dt><dd>${escapeHtml(humanize(booking.inventory_release_type))}</dd></div>
+          <div><dt>Release reason</dt><dd>${escapeHtml(booking.inventory_release_reason || "-")}</dd></div>
+          <div><dt>Released by</dt><dd>${escapeHtml(
+            booking.inventory_release_admin?.full_name
+              || booking.inventory_release_admin?.email
+              || (booking.inventory_released_by ? "Authorized Room Admin" : "Legacy/system transition"),
+          )}</dd></div>
+          ${booking.inventory_released_by_role ? `<div><dt>Admin role</dt><dd>${escapeHtml(humanize(booking.inventory_released_by_role))}</dd></div>` : ""}
+        ` : ""}
         <div><dt>Email status</dt><dd>${escapeHtml(humanize(booking.email_status || "not sent"))}</dd></div>
         <div><dt>Customer contacted</dt><dd>${booking.customer_contacted ? "Yes" : "No"}</dd></div>
         <div><dt>Created</dt><dd>${formatDate(booking.created_at, true)}</dd></div>
@@ -142,7 +223,10 @@ function roomBookingCard(booking, group) {
   `;
 }
 
-function inventoryPanel(inventory = []) {
+function inventoryPanel(inventory = [], availability = [], range = availabilityRange) {
+  const dateAvailability = new Map(
+    availability.map((room) => [String(room.room_type || "").toLowerCase(), room]),
+  );
   return `
     <section class="admin-card room-inventory-admin-card">
       <div class="admin-panel-heading compact-heading">
@@ -152,21 +236,36 @@ function inventoryPanel(inventory = []) {
           <p>Date-specific availability is calculated from this capacity minus overlapping active bookings.</p>
         </div>
       </div>
+      <form class="room-availability-admin-form" data-room-availability-form>
+        <label>Check-in<input name="checkIn" type="date" value="${escapeHtml(range.checkIn)}" min="${escapeHtml(ethiopiaDateOffset(0))}" required /></label>
+        <label>Check-out<input name="checkOut" type="date" value="${escapeHtml(range.checkOut)}" min="${escapeHtml(ethiopiaDateOffset(1))}" required /></label>
+        <button class="btn btn-primary" type="submit">Check Date Availability</button>
+      </form>
       <div class="room-inventory-admin-grid">
-        ${inventory.map((room) => `
-          <form class="room-inventory-admin-form" data-room-inventory-form="${escapeHtml(room.id)}">
+        ${inventory.map((room) => {
+          const dateRoom = dateAvailability.get(String(room.room_type || "").toLowerCase());
+          return `
+          <article class="room-inventory-admin-form">
             <h3>${escapeHtml(room.room_type)}</h3>
-            <label>Total physical rooms<input name="totalRooms" type="number" min="0" value="${escapeHtml(room.total_rooms)}" required /></label>
-            <label>Sellable rooms<input name="sellableRooms" type="number" min="0" max="${escapeHtml(room.total_rooms)}" value="${escapeHtml(room.sellable_rooms ?? room.total_rooms)}" required /></label>
-            <button class="btn btn-light" type="submit">Update Capacity</button>
-          </form>
-        `).join("")}
+            <dl class="room-capacity-summary">
+              <div><dt>Total Physical Rooms</dt><dd>${escapeHtml(dateRoom?.total_rooms ?? room.total_rooms)}</dd></div>
+              <div><dt>Sellable Capacity</dt><dd>${escapeHtml(dateRoom?.sellable_rooms ?? room.sellable_rooms ?? room.total_rooms)}</dd></div>
+              <div><dt>Active Holds for Selected Dates</dt><dd>${escapeHtml(dateRoom?.held_rooms ?? "-")}</dd></div>
+              <div><dt>Available for Selected Dates</dt><dd>${escapeHtml(dateRoom?.available_rooms ?? "-")}</dd></div>
+            </dl>
+            <form class="room-capacity-edit-form" data-room-inventory-form="${escapeHtml(room.id)}">
+              <label>Total physical rooms<input name="totalRooms" type="number" min="0" value="${escapeHtml(room.total_rooms)}" required /></label>
+              <label>Sellable rooms<input name="sellableRooms" type="number" min="0" max="${escapeHtml(room.total_rooms)}" value="${escapeHtml(room.sellable_rooms ?? room.total_rooms)}" required /></label>
+              <button class="btn btn-light" type="submit">Update Base Capacity</button>
+            </form>
+          </article>
+        `;}).join("")}
       </div>
     </section>
   `;
 }
 
-function bookingSection(bookings = [], inventory = []) {
+function bookingSection(bookings = [], inventory = [], availability = [], range = availabilityRange) {
   const pending = bookings.filter((booking) => pendingStatuses.has(booking.status));
   const confirmed = bookings.filter((booking) => confirmedStatuses.has(booking.status));
   const inactive = bookings.filter((booking) => inactiveStatuses.has(booking.status));
@@ -183,10 +282,10 @@ function bookingSection(bookings = [], inventory = []) {
   `;
 
   return `
-    ${inventoryPanel(inventory)}
+    ${inventoryPanel(inventory, availability, range)}
     ${panel("Pending Requests", "Pending Room Requests", pending, "pending", "No pending room requests.")}
     ${panel("Confirmed Stays", "Confirmed Room Bookings", confirmed, "confirmed", "No confirmed room bookings yet.")}
-    ${panel("Released Capacity", "Declined & Cancelled Requests", inactive, "inactive", "No declined or cancelled room requests.")}
+    ${panel("Released Capacity", "Checked Out, Declined & Cancelled", inactive, "inactive", "No checked-out, declined, or cancelled room requests.")}
   `;
 }
 
@@ -233,7 +332,7 @@ function setupNotice() {
 async function renderDashboard(adminProfile) {
   try {
     const data = await withTimeout(
-      roomAdminRequest("dashboard"),
+      roomAdminRequest("dashboard", availabilityRange),
       "The Room Admin service did not respond while loading bookings.",
     );
     latestRoomBookings = data.bookings || [];
@@ -246,7 +345,12 @@ async function renderDashboard(adminProfile) {
         <button class="btn btn-primary" type="button" id="admin-sign-out">Sign Out</button>
       </section>
       ${adminNotice ? `<section class="admin-card admin-notice" role="status"><p>${escapeHtml(adminNotice)}</p></section>` : ""}
-      ${bookingSection(latestRoomBookings, data.inventory || [])}
+      ${bookingSection(
+        latestRoomBookings,
+        data.inventory || [],
+        data.availability || [],
+        data.availabilityRange || availabilityRange,
+      )}
       <p class="admin-status" role="status" aria-live="polite"></p>
     `);
     adminNotice = "";
@@ -277,33 +381,80 @@ function bindActions(adminProfile) {
     button.addEventListener("click", async () => {
       const status = document.querySelector(".admin-status");
       const transition = button.dataset.roomTransition;
-      const reason = transition === "decline"
-        ? window.prompt("Reason shown to the guest (required):", "The requested room is unavailable for these dates.")
-        : "";
-      if (transition === "decline" && !reason?.trim()) return;
+      let reason = "";
+      if (transition === "decline") {
+        reason = window.prompt("Reason shown to the guest (required):", "The requested room is unavailable for these dates.") || "";
+        if (!reason.trim()) return;
+      }
+      if (transition === "force_release") {
+        const approved = window.confirm(
+          "Release this booking's room inventory? The public booking website may immediately sell this capacity even if the guest is still occupying the room.",
+        );
+        if (!approved) return;
+        reason = window.prompt("Management reason for releasing this inventory (required):", "") || "";
+        if (!reason.trim()) return;
+      }
+      if (transition === "restore_hold") {
+        reason = window.prompt(
+          "Reason for restoring this booking's room inventory hold (required):",
+          "Room inventory hold restored by management.",
+        ) || "";
+        if (!reason.trim()) return;
+      }
+      if (transition === "check_out" && !window.confirm(
+        "Check out this guest and release the room inventory now? The original booking dates will remain unchanged.",
+      )) return;
       try {
         button.disabled = true;
-        status.textContent = transition === "confirm"
-          ? "Confirming the held booking and preparing the official confirmation..."
-          : "Declining the request and releasing its date hold...";
+        const progressMessages = {
+          confirm: "Confirming the held booking and preparing the official confirmation...",
+          decline: "Declining the request and releasing its date hold...",
+          check_in: "Marking the guest as checked in...",
+          check_out: "Checking out the guest and releasing room inventory...",
+          force_release: "Applying the management inventory release...",
+          restore_hold: "Restoring the inventory hold after a final capacity check...",
+        };
+        status.textContent = progressMessages[transition] || "Updating this booking...";
         const result = await roomAdminRequest("transition", {
           bookingId: button.dataset.roomId,
           transition,
           reason,
         });
-        adminNotice = transition === "confirm"
-          ? result.confirmation?.error
+        if (transition === "confirm") {
+          adminNotice = result.confirmation?.error
             ? `Booking confirmed, but the official PDF needs attention: ${result.confirmation.error}`
             : result.email?.sent
               ? "Booking confirmed. The official stamped PDF was stored and emailed to the guest."
-              : `Booking confirmed and the official PDF was stored. Email needs attention: ${result.email?.error || "not sent"}`
-          : "Booking declined. Its room capacity is immediately available for those dates.";
+              : `Booking confirmed and the official PDF was stored. Email needs attention: ${result.email?.error || "not sent"}`;
+        } else {
+          const notices = {
+            decline: "Booking declined. Its room capacity is immediately available for those dates.",
+            check_in: "Guest marked as checked in. The existing room inventory hold remains active.",
+            check_out: "Guest checked out. Room inventory is immediately available for overlapping dates.",
+            force_release: "Inventory released by management. The booking status and contractual dates were not changed.",
+            restore_hold: "Inventory hold restored after a successful date-capacity check.",
+          };
+          adminNotice = notices[transition] || "Room booking updated.";
+        }
         await renderDashboard(adminProfile);
       } catch (error) {
         button.disabled = false;
         status.textContent = error.message || "Could not update this room booking.";
       }
     });
+  });
+
+  document.querySelector("[data-room-availability-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const status = document.querySelector(".admin-status");
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    if (!values.checkIn || !values.checkOut || values.checkOut <= values.checkIn) {
+      status.textContent = "Check-out must be after check-in.";
+      return;
+    }
+    availabilityRange = { checkIn: values.checkIn, checkOut: values.checkOut };
+    status.textContent = "Loading date-aware room availability...";
+    await renderDashboard(adminProfile);
   });
 
   document.querySelectorAll("[data-room-contacted]").forEach((button) => {

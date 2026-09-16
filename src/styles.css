@@ -3479,6 +3479,28 @@ textarea {
   gap: 14px;
 }
 
+.room-availability-admin-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 20px 0;
+  border: 1px solid rgba(198, 151, 45, 0.34);
+  border-radius: var(--radius);
+  background: #fffaf0;
+  padding: 16px;
+}
+
+.room-availability-admin-form label,
+.room-capacity-edit-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--charcoal);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
 .room-inventory-admin-form {
   display: grid;
   gap: 10px;
@@ -3491,6 +3513,80 @@ textarea {
 .room-inventory-admin-form h3 {
   margin: 0;
   font-size: 1.1rem;
+}
+
+.room-capacity-summary {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.room-capacity-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(198, 151, 45, 0.18);
+  padding-bottom: 7px;
+}
+
+.room-capacity-summary dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.room-capacity-summary dd {
+  margin: 0;
+  color: var(--green);
+  font-weight: 900;
+}
+
+.room-capacity-edit-form {
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+}
+
+.room-admin-state-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.inventory-hold-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.inventory-hold-pill.is-holding {
+  border-color: rgba(31, 107, 50, 0.24);
+  background: #e8f6ea;
+  color: #1f6b32;
+}
+
+.inventory-hold-pill.is-released {
+  border-color: rgba(198, 151, 45, 0.45);
+  background: #fff2cf;
+  color: #76530d;
+}
+
+.status-action-warning {
+  border-color: #b86b23;
+  color: #8b4317;
+}
+
+.status-action-warning:hover,
+.status-action-warning:focus-visible {
+  border-color: #8b4317;
+  background: #fff1e5;
 }
 
 .restaurant-settings-card {
@@ -5109,6 +5205,14 @@ textarea {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .room-availability-admin-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .room-availability-admin-form .btn {
+    grid-column: 1 / -1;
+  }
+
   .room-total-card {
     justify-self: start;
   }
@@ -5244,6 +5348,15 @@ textarea {
     min-height: 78svh;
     padding-top: 112px;
     padding-bottom: 44px;
+  }
+
+  .room-availability-admin-form {
+    grid-template-columns: 1fr;
+  }
+
+  .room-availability-admin-form .btn {
+    grid-column: auto;
+    width: 100%;
   }
 
   .booking-flow-section {
