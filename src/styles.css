@@ -5757,9 +5757,72 @@ textarea {
 .restaurant-menu-image { width:100%;height:170px;object-fit:cover;border-radius:12px; }
 .menu-item-card[hidden],.menu-category[hidden] { display:none!important; }
 .order-number-card strong { overflow-wrap:anywhere; }
-.restaurant-admin-table { width:100%;border-collapse:collapse; }
-.restaurant-admin-table td,.restaurant-admin-table th { text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid #ddd; }
-.restaurant-admin-table td { max-width:330px;overflow-wrap:anywhere; }
-.restaurant-admin-actions { display:flex;gap:8px;flex-wrap:wrap; }
-.restaurant-admin-table-wrap { overflow:auto; }
+.admin-service-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.restaurant-admin-shell > .admin-card,
+.restaurant-admin-shell > .admin-panel,
+.restaurant-admin-summary {
+  margin-bottom: 24px;
+}
+
+.restaurant-admin-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  overflow: visible;
+}
+
+.restaurant-admin-summary .event-admin-summary-item { padding: 20px; }
+.restaurant-admin-summary .event-admin-summary-item span { font-size: 0.85rem; }
+.restaurant-admin-status:empty { display: none; }
+.restaurant-admin-status { margin: 0 0 22px; }
+.restaurant-admin-page .admin-settings-form > label:not(.toggle-row) { display: grid; gap: 8px; }
+.restaurant-admin-page .admin-settings-form > button { justify-self: start; }
+.restaurant-admin-records { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.restaurant-admin-records > .empty-state { grid-column: 1 / -1; padding: 14px 0; }
+.restaurant-records-heading { align-items: end; flex-wrap: wrap; }
+.restaurant-records-heading p:last-child { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.restaurant-order-filters { display: flex; flex-wrap: wrap; gap: 12px; }
+.restaurant-order-filters label { display: grid; gap: 6px; font-size: 0.82rem; font-weight: 800; }
+.restaurant-order-filters input { width: 260px; max-width: 100%; }
+.restaurant-order-record { min-width: 0; overflow-wrap: anywhere; }
+.restaurant-order-reference { letter-spacing: 0.03em; font-size: 0.7rem; }
+.restaurant-order-created { margin: 8px 0 0; color: var(--muted); font-size: 0.78rem; }
+.restaurant-order-record .admin-order-card-head { flex-wrap: wrap; }
+.restaurant-order-wide { grid-column: 1 / -1; }
+.restaurant-order-items h4 { margin: 0 0 8px; }
+.restaurant-order-items ul { list-style: none; padding: 0; margin: 0; }
+.restaurant-order-items li,
+.restaurant-order-total { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; }
+.restaurant-order-items li { border-bottom: 1px solid var(--line); }
+.restaurant-order-items li strong,
+.restaurant-order-total strong { white-space: nowrap; }
+.restaurant-order-total { color: var(--green); font-weight: 900; }
+.restaurant-proof { display: grid; gap: 10px; justify-items: start; }
+.restaurant-proof a { color: var(--green-2); text-decoration: underline; font-size: 0.84rem; }
+.restaurant-record-note { margin: 0; color: var(--muted); font-size: 0.88rem; }
+.restaurant-login-note { padding-top: 12px; color: var(--muted); font-size: 0.85rem; }
+.restaurant-admin-contact { color: var(--muted); font-size: 0.88rem; overflow-wrap: anywhere; }
+.restaurant-admin-contact a { color: var(--green-2); text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .restaurant-admin-records { grid-template-columns: 1fr; }
+  .restaurant-admin-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .admin-service-nav { display: grid; grid-template-columns: 1fr; }
+  .restaurant-admin-summary .event-admin-summary-item { padding: 16px; }
+  .restaurant-order-filters,
+  .restaurant-order-filters label,
+  .restaurant-order-filters input { width: 100%; }
+  .restaurant-admin-page .admin-panel-heading { align-items: start; flex-direction: column; }
+  .restaurant-admin-page .admin-order-grid { padding: 12px; }
+  .restaurant-admin-page .admin-user { overflow-wrap: anywhere; }
+  .restaurant-admin-page .admin-toolbar { justify-content: stretch; }
+}
 @media(max-width:640px) { .restaurant-menu-filters {grid-template-columns:1fr;} .restaurant-menu-image {height:150px;} .order-summary{position:static;} }

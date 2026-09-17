@@ -2,6 +2,13 @@
 
 ## Latest continuation
 
+### Restaurant admin layout requested by the owner
+
+- Rebuilt the basic restaurant admin page using the existing room/event admin layout: branded hero and logo, toolbar, status counts, order cards, search and order-type filters, private proof links, approval/decline/kitchen actions, and ordering availability.
+- Added `restaurant-admin-login.html` with the same two-column protected sign-in layout, responsive navigation, useful authentication errors and links between Room, Event Hall and Restaurant Admin. Guest and unauthorized sessions cannot load the restaurant dashboard data; the existing server authorization is retained.
+- Restaurant contact remains `restaurant@harlahotel.com`. A mailbox is not automatically a staff login. No authentication account or new administrator permission was created by this UI change.
+- Production build, syntax validation and restaurant workflow/UI regression checks pass. Live authenticated operational tests remain pending working restaurant staff credentials; the prior deployment condition still applies.
+
 - Resumed from PR #3 at `bb12707d403ce9a62bd2afa0aa5e4a9c47d22f82`. The matching Vercel preview was READY. Production has not been released.
 - Browser access recovered using the authorized Vercel preview link. Restaurant staff sign-in rendered correctly, but the secure sign-in attempt returned **Invalid login credentials**. Authenticated restaurant, event and room checks remain blocked. This is a sign-in failure, not evidence that the preview is down. Do not repeat browser resets; use the existing sign-in page and secure/manual sign-in.
 - Corrected restaurant staff payment labels to show verified transfer payment for approved orders; declined customer orders no longer imply that payment verification or kitchen handoff is still pending. The existing database stores payment method state separately from approval, so no payment-status schema change was needed.

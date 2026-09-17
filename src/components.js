@@ -32,6 +32,14 @@ function packageWhatsAppUrl(packageName) {
   return `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
 }
 
+export function AdminServiceNav(active) {
+  return `<nav class="admin-service-nav" aria-label="Admin services">${[
+    ['room', 'Room Admin', './admin.html'],
+    ['events', 'Event Hall Admin', './event-admin.html'],
+    ['restaurant', 'Restaurant Admin', './restaurant-admin.html'],
+  ].map(([key, label, href]) => `<a class="btn ${key === active ? 'btn-primary' : 'btn-light'}" href="${href}" ${key === active ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
+}
+
 export function Navbar(active = "home") {
   return `
     <header class="site-header" data-header>

@@ -21,6 +21,7 @@ const rootFiles = [
   "order-status.html",
   "restaurant-menu.html",
   "restaurant-admin.html",
+  "restaurant-admin-login.html",
   "restaurant-order.html",
   "restaurant.html",
   "room-booking.html",

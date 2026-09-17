@@ -1,4 +1,4 @@
-import { Navbar } from "./components.js?v=20260815-event-hall-v1";
+import { AdminServiceNav, Navbar } from "./components.js?v=20260815-event-hall-v1";
 import { images, siteConfig } from "./data.js?v=20260815-event-hall-v1";
 import { requireEventAdminAccess } from "./event-api.js?v=20260818-event-request-v4";
 import { getAdminSession, isBackendReady, signInAdmin, signOutAdmin } from "./supabase-api.js?v=20260818-event-request-v4";
@@ -22,7 +22,7 @@ function safeNext() {
 }
 
 function shell(content) {
-  app.innerHTML = `${Navbar("events")}<main class="admin-shell" id="event-admin-login-main"><section class="admin-hero"><div><p class="eyebrow">Events Team Access</p><h1>Harla Hotel Events</h1><p>Sign in to review requests, prepare quotes, verify payments, and manage confirmed Event Hall reservations.</p></div><img src="${images.logo}" alt="${siteConfig.brandName} logo" /></section>${content}</main>`;
+  app.innerHTML = `${Navbar("events")}<main class="admin-shell" id="event-admin-login-main"><section class="admin-hero"><div><p class="eyebrow">Events Team Access</p><h1>Harla Hotel Events</h1><p>Sign in to review requests, prepare quotes, verify payments, and manage confirmed Event Hall reservations.</p></div><img src="${images.logo}" alt="${siteConfig.brandName} logo" /></section>${AdminServiceNav("events")}${content}</main>`;
   document.querySelector("[data-header]")?.classList.add("is-scrolled");
 }
 
