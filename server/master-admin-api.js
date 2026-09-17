@@ -38,8 +38,8 @@ async function deliverReport(db, { key, kind, period, recipient }) {
   const rows = checked(await db.rpc('claim_manager_report', { p_key: key, p_kind: kind, p_start: period.start, p_end: period.end, p_recipient: recipient }));
   let run = rows?.[0];
   if (!run) {
-    const existing = checked(await db.from('manager_report_runs').select('status').eq('idempotency_key', key).single());
-    return { sent: existing.status === 'sent', status: existing.status };
+    const existing = checked(await db.from('manager_report_runs').select('status,attempts').eq('idempotency_key', key).single());
+    return { sent: existing.status === 'sent', status: existing.status, exhausted: existing.status === 'failed' && existing.attempts >= 5 };
   }
   try {
     // Resend retains idempotency keys for 24 hours. Never blindly repeat an ambiguous older send.
@@ -86,7 +86,7 @@ async function scheduledReports(db) {
     if (frequency === 'off' || !due || new Date(due) > new Date()) continue;
     try {
       const result = await deliverReport(db, { key: `${config.revision}:${kind}:${due}`, kind, period: reportPeriod(frequency, due), recipient: config.recipient_email });
-      if (result.sent) checked(await db.from('manager_report_settings').update({ [field]: nextOccurrence(config, frequency) }).eq('id', 'default').eq('revision', config.revision).eq(field, due));
+      if (result.sent || result.exhausted) checked(await db.from('manager_report_settings').update({ [field]: nextOccurrence(config, frequency) }).eq('id', 'default').eq('revision', config.revision).eq(field, due));
       results.push({ kind, ...result });
     } catch (error) { results.push({ kind, sent: false, error: error.message }); }
   }

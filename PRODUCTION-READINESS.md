@@ -13,7 +13,8 @@ This section supersedes earlier UI/access notes below; the older entries are his
 - Applied the master_admin_reporting schema migration and granted the existing owner account master membership using a private database operation. No credentials are recorded in the repository. New report/audit tables have RLS and no anon/authenticated privileges; report storage is private.
 - All five existing workflow/PDF suites, new manager reporting/access tests, syntax checks and production build pass locally. Authenticated browser and final deployment verification remain pending.
 - Deployment order: release the new API; apply restaurant_server_only_submissions and manager_report_scheduler; run privacy and live smoke checks. The scheduler uses Supabase Cron every five minutes and makes HTTP calls only for enabled, due schedules.
-- Clear only positively identified test records after archiving them privately. Do not delete ambiguous customer records, room capacities, rates, menus, halls or staff accounts.
+- Archived and removed 14 explicitly labelled test records: 9 rooms, 2 restaurant orders, 3 event bookings. Private recovery archive: harla_private.test_record_archive. Preserved 9 ambiguous/real room records, 5 restaurant records, 1 event record and 8 legacy event enquiries. Room capacities, rates, menus, halls and staff credentials are unchanged.
+- Rollback-only live database tests passed: master-authorized room decline releases inventory and records the manager actor; restaurant approval records the staff identity. No test mutations were retained.
 
 ## Latest continuation
 
