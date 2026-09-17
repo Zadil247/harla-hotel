@@ -51,9 +51,9 @@ function orderResult(order) {
       <h2>${escapeHtml(orderStatusMessage(order))}</h2>
       <dl class="status-details">
         <div><dt>Order type</dt><dd>${escapeHtml(order.order_type)}</dd></div>
-        <div><dt>Payment status</dt><dd>${escapeHtml(order.payment_status === "pay_at_hotel" ? "Pay at the hotel" : order.status === "approved" ? "Payment verified" : "Awaiting payment verification")}</dd></div>
+        <div><dt>Payment status</dt><dd>${escapeHtml(order.status === "declined" ? "Order declined. Contact the hotel about any payment." : order.payment_status === "pay_at_hotel" ? "Pay at the hotel" : order.status === "approved" ? "Payment verified" : "Awaiting payment verification")}</dd></div>
         <div><dt>Order status</dt><dd>${escapeHtml(order.status)}</dd></div>
-        <div><dt>Kitchen system</dt><dd>${order.odoo_status === "entered" ? "Sent to kitchen" : "Awaiting kitchen handoff"}</dd></div>
+        <div><dt>Kitchen status</dt><dd>${order.odoo_status === "entered" ? "Sent to kitchen" : order.status === "declined" ? "Not sent to kitchen" : "Awaiting kitchen handoff"}</dd></div>
       </dl>
       <p>
         If you need help with this order, contact Harla Hotel and share your order number.

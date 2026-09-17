@@ -1,4 +1,16 @@
-# Harla V1 readiness checkpoint — 16 September 2026
+# Harla V1 readiness checkpoint — 17 September 2026
+
+## Latest continuation
+
+- Resumed from PR #3 at `bb12707d403ce9a62bd2afa0aa5e4a9c47d22f82`. The matching Vercel preview was READY. Production has not been released.
+- Browser access recovered using the authorized Vercel preview link. Restaurant staff sign-in rendered correctly, but the secure sign-in attempt returned **Invalid login credentials**. Authenticated restaurant, event and room checks remain blocked. This is a sign-in failure, not evidence that the preview is down. Do not repeat browser resets; use the existing sign-in page and secure/manual sign-in.
+- Corrected restaurant staff payment labels to show verified transfer payment for approved orders; declined customer orders no longer imply that payment verification or kitchen handoff is still pending. The existing database stores payment method state separately from approval, so no payment-status schema change was needed.
+- Restaurant staff footer now also uses `restaurant@harlahotel.com`. Public restaurant/menu/status pages already use it. Automated restaurant email notifications are still outside the implemented workflow.
+- Applied and verified `20260917183832_v1_trigger_security_hardening`: fixed `set_updated_at()` search path and revoked client execution of the internal `rls_auto_enable()` event trigger. A rollback-only timestamp-trigger test and privilege assertions passed; the advisor no longer reports those issues.
+- Reviewed the remaining public lookup and role-check functions: they intentionally return limited status/availability or a membership boolean. Do not revoke these customer APIs indiscriminately. The private inventory audit table intentionally has no client RLS policy. Leaked-password protection remains disabled and was not changed.
+- Rechecked the three prior synthetic records: room cancelled with no inventory hold; restaurant declined and never sent to kitchen; event cancelled. This continuation created no new bookings and sent no test emails.
+- JavaScript syntax, production build and restaurant regression checks passed after these edits. All four room/event workflow and PDF suites also passed again.
+- The original release gate and post-deployment migration order below still apply. No further owner deployment approval is needed; working admin sign-in and the remaining operational checks are needed.
 
 ## Release status
 

@@ -1,12 +1,13 @@
 import {Navbar,Footer} from './components.js';
 import {getSupabaseClient} from './supabase-client.js';
 import {restaurantRequest} from './restaurant-api.js';
+import {siteConfig} from './data.js';
 const app=document.querySelector('#restaurant-admin-app');
 const state={orders:[],settings:null,status:'pending',busy:false,message:'',authorized:false};
 const escape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 const api=(action,payload={})=>restaurantRequest(action,payload,true);
 function shell(content) {
- app.innerHTML=`${Navbar('admin')}<main class="admin-shell" id="restaurant-admin-main"><section class="admin-hero"><div><p class="eyebrow">Restaurant operations</p><h1>Restaurant Admin</h1><p>Review orders, verify payments, and send approved orders to the kitchen.</p><div class="order-actions"><a href="./admin.html">Room Admin</a><a href="./event-admin.html">Events Admin</a><a href="./restaurant-order.html">View Menu</a></div></div></section>${content}</main>${Footer()}`;
+ app.innerHTML=`${Navbar('admin')}<main class="admin-shell" id="restaurant-admin-main"><section class="admin-hero"><div><p class="eyebrow">Restaurant operations</p><h1>Restaurant Admin</h1><p>Review orders, verify payments, and send approved orders to the kitchen.</p><div class="order-actions"><a href="./admin.html">Room Admin</a><a href="./event-admin.html">Events Admin</a><a href="./restaurant-order.html">View Menu</a></div></div></section>${content}</main>${Footer({email:siteConfig.restaurantEmail})}`;
  document.querySelector('[data-header]')?.classList.add('is-scrolled');
  document.querySelector('[data-nav-toggle]')?.addEventListener('click',event=>{const b=event.currentTarget;b.setAttribute('aria-expanded',String(b.getAttribute('aria-expanded')!=='true'));document.querySelector('[data-nav-menu]').classList.toggle('is-open');});
 }
@@ -26,7 +27,7 @@ function rows() {
   return `<tr><td><strong>${escape(o.order_number)}</strong><br>${new Date(o.created_at).toLocaleString('en-GB',{timeZone:'Africa/Addis_Ababa'})}<br>${escape(o.order_type)}</td>
   <td>${escape(o.customer_name)}<br>${escape(o.phone)}<br>${escape(o.address_area||'')} ${escape(o.custom_address||'')}</td>
   <td><ul>${items.map(i=>`<li>${escape(i.quantity)} × ${escape(i.name)} — ${escape(i.line_total)} ETB</li>`).join('')}</ul><strong>${total.toLocaleString('en-ET')} ETB</strong></td>
-  <td>${escape(o.payment_method)}<br>${escape(o.payment_reference||'No transfer reference')}<br>${o.payment_status==='pay_at_hotel'?'Collect payment at hotel':'Transfer proof submitted'}
+  <td>${escape(o.payment_method)}<br>${escape(o.payment_reference||'No transfer reference')}<br>${o.status==='declined'?'Order declined':o.payment_status==='pay_at_hotel'?'Collect payment at hotel':o.status==='approved'?'Payment verified':'Transfer proof submitted'}
   ${o.payment_screenshot_url?`<button class="btn btn-light" data-proof="${o.id}">View payment proof</button><span id="proof-${o.id}"></span>`:''}</td>
   <td><div class="restaurant-admin-actions">${o.status==='pending'?`<button class="btn btn-primary" data-id="${o.id}" data-transition="approve">Approve</button><button class="btn btn-light" data-id="${o.id}" data-transition="decline">Decline</button>`:o.status==='approved'&&o.odoo_status!=='entered'?`<button class="btn btn-primary" data-id="${o.id}" data-transition="kitchen">Mark sent to kitchen</button>`:escape(o.status==='declined'?'Declined':'Sent to kitchen')}</div></td></tr>`;
  }).join('');
