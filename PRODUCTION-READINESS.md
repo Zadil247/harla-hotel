@@ -1,5 +1,20 @@
 # Harla V1 readiness checkpoint — 17 September 2026
 
+## Management release — current work (17 September 2026)
+
+This section supersedes earlier UI/access notes below; the older entries are history.
+
+- Owner confirmed the restaurant login works and requested a separate Master Admin, live oversight, configurable Excel email reports and weekly/monthly summaries. Existing passwords and login emails are unchanged.
+- Added a management login/dashboard, server-enforced master membership, access to all three existing department dashboards, and a 10-second activity feed. Removed cross-department tabs from individual staff login/dashboard pages.
+- Added private audit records for customer submissions and staff status/payment/kitchen/inventory actions. Verified server requests carry the staff identity; client-supplied actor headers cannot attribute actions to other staff.
+- Added typed Excel reports for rooms, restaurant, events, tours, enquiries and activity. Reports use Ethiopia time, compare new records with the preceding equal-length period, and clearly distinguish recorded request/quote value from collected revenue. No paid AI service.
+- Added configurable daily/weekly/monthly email reports and optional weekly/monthly summaries, private file storage, delivery history, retry leases and provider idempotency keys. The general manager's recipient email has not been supplied: delivery stays disabled until an authorized master saves it.
+- Hotel/rooms/tours/events phone and WhatsApp: +251984517677. Restaurant phone and WhatsApp: +251984977677. Existing payment account numbers remain unchanged.
+- Applied the master_admin_reporting schema migration and granted the existing owner account master membership using a private database operation. No credentials are recorded in the repository. New report/audit tables have RLS and no anon/authenticated privileges; report storage is private.
+- All five existing workflow/PDF suites, new manager reporting/access tests, syntax checks and production build pass locally. Authenticated browser and final deployment verification remain pending.
+- Deployment order: release the new API; apply restaurant_server_only_submissions and manager_report_scheduler; run privacy and live smoke checks. The scheduler uses Supabase Cron every five minutes and makes HTTP calls only for enabled, due schedules.
+- Clear only positively identified test records after archiving them privately. Do not delete ambiguous customer records, room capacities, rates, menus, halls or staff accounts.
+
 ## Latest continuation
 
 ### Restaurant admin layout requested by the owner

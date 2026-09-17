@@ -1,4 +1,4 @@
-import { AdminServiceNav, Navbar } from "./components.js?v=20260818-room-workflow-v2";
+import { Navbar } from "./components.js?v=20260818-room-workflow-v2";
 import { images, siteConfig } from "./data.js?v=20260818-room-workflow-v2";
 import {
   backendSetupMessage,
@@ -60,7 +60,7 @@ function shell(content) {
         </div>
         <img src="${images.logo}" alt="${siteConfig.brandName} logo" />
       </section>
-      ${AdminServiceNav("room")}
+
       ${content}
     </main>
   `;

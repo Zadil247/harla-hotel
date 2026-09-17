@@ -5,8 +5,10 @@ export const siteConfig = {
   brandName: "Harla Hotel",
   tagline: "Warm Harari hospitality, refined for modern travel.",
   // REPLACE: Update phone, WhatsApp, email, address, and social/contact details before publishing.
-  phone: "+251 915 321 188",
-  whatsapp: "+251 915 321 188",
+  restaurantPhone: "+251 984 977 677",
+  restaurantWhatsapp: "+251 984 977 677",
+  phone: "+251 984 517 677",
+  whatsapp: "+251 984 517 677",
   email: "booking@harlahotel.com",
   eventsEmail: "events@harlahotel.com",
   restaurantEmail: "restaurant@harlahotel.com",
@@ -25,8 +27,8 @@ export const siteConfig = {
 
 export const whatsappLinks = {
   room: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20book%20a%20room.`,
-  table: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20see%20the%20restaurant%20menu.`,
-  vipRoom: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20reserve%20the%20VIP%20private%20room.`,
+  table: `https://wa.me/${siteConfig.restaurantWhatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20see%20the%20restaurant%20menu.`,
+  vipRoom: `https://wa.me/${siteConfig.restaurantWhatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20reserve%20the%20VIP%20private%20room.`,
   event: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20plan%20an%20event.`,
   package: `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=Hello%20Harla%20Hotel%2C%20I%20want%20to%20request%20a%20tour%20package.`,
 };

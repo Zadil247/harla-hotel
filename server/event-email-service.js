@@ -62,7 +62,7 @@ function frame(booking, title, lead, portalUrl, body) {
           <p style="font-size:13px;color:#5d5a52;">This secure link is intended for you. Do not forward it to anyone who should not access the request.</p>
         </div>
         <div style="padding:19px 28px;background:#171716;color:#eee;font-size:13px;line-height:1.55;">
-          Harla Hotel Events, Harar, Ethiopia<br />+251 915 321 188 | events@harlahotel.com
+          Harla Hotel Events, Harar, Ethiopia<br />+251 984 517 677 | events@harlahotel.com
         </div>
       </div>
     </body></html>`;

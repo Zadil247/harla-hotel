@@ -37,7 +37,7 @@ export function AdminServiceNav(active) {
     ['room', 'Room Admin', './admin.html'],
     ['events', 'Event Hall Admin', './event-admin.html'],
     ['restaurant', 'Restaurant Admin', './restaurant-admin.html'],
-  ].map(([key, label, href]) => `<a class="btn ${key === active ? 'btn-primary' : 'btn-light'}" href="${href}" ${key === active ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
+  ].map(([key, label, href]) => `<a class="btn ${key === active ? 'btn-primary' : 'btn-light'}" href="${href}" ${active === "master" ? 'target="_blank" rel="noopener"' : ""} ${key === active ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
 }
 
 export function Navbar(active = "home") {
@@ -438,7 +438,7 @@ export function BookingForm() {
   `;
 }
 
-export function Footer({ email = siteConfig.email } = {}) {
+export function Footer({ email = siteConfig.email, phone = siteConfig.phone, whatsapp = siteConfig.whatsapp } = {}) {
   const socialLinks = [
     ["Facebook", siteConfig.facebook],
     ["Instagram", siteConfig.instagram],
@@ -454,8 +454,8 @@ export function Footer({ email = siteConfig.email } = {}) {
       </div>
       <address>
         <!-- REPLACE: Update phone, WhatsApp, email, and address in src/data.js. -->
-        <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>
-        <a href="https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}">WhatsApp</a>
+        <a href="tel:${phone.replaceAll(" ", "")}">${phone}</a>
+        <a href="https://wa.me/${whatsapp.replace(/\D/g, "")}">WhatsApp</a>
         <a href="mailto:${email}">${email}</a>
         <span>${siteConfig.address}</span>
       </address>

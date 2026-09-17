@@ -10,10 +10,12 @@
     "test:event-pdf": "node scripts/test-event-pdf.mjs",
     "test:room-workflow": "node scripts/test-room-workflow.mjs",
     "test:room-pdf": "node scripts/test-room-pdf.mjs",
-    "test:restaurant-workflow": "node scripts/test-restaurant-workflow.mjs"
+    "test:restaurant-workflow": "node scripts/test-restaurant-workflow.mjs",
+    "test:manager-reporting": "node scripts/test-manager-reporting.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.8",
+    "exceljs": "4.4.0",
     "pdf-lib": "1.17.1",
     "sharp": "0.35.4",
     "stripe": "22.3.2"

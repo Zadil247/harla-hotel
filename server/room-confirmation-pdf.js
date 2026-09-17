@@ -80,7 +80,7 @@ export async function generateRoomConfirmationPdf(booking, assets = {}) {
   page.drawText("HARLA HOTEL", { x: margin, y: A4[1] - 42, size: 23, font: bold, color: palette.white });
   page.drawText("ROOM BOOKING CONFIRMATION", { x: margin, y: A4[1] - 64, size: 10, font: bold, color: palette.gold });
   page.drawText("Harar, Ethiopia", { x: margin, y: A4[1] - 84, size: 8.5, font: regular, color: palette.white });
-  page.drawText("+251 915 321 188  |  booking@harlahotel.com", {
+  page.drawText("+251 984 517 677  |  booking@harlahotel.com", {
     x: margin,
     y: A4[1] - 100,
     size: 8.5,

@@ -30,7 +30,7 @@ export default {async fetch(request) {
     if(raw.length>4400000) throw new PublicError('Request is too large.',413);
     let body;try {body=JSON.parse(raw);} catch {throw new PublicError('Invalid JSON.');}
     if(!body || typeof body!=='object') throw new PublicError('Invalid request.');
-    const db=getSupabaseAdmin();
+    let db=getSupabaseAdmin();
     if(body.action==='settings') return reply({settings:await settings(db)});
     if(body.action==='create') {
       const order=normalizeRestaurantOrder(body.order);
@@ -56,6 +56,7 @@ export default {async fetch(request) {
     }
     const admin=await requestingAdmin(db,request);
     if(!admin) return reply({error:'Active Harla Restaurant Admin access is required.'},403);
+    db=getSupabaseAdmin(admin.id);
     if(body.action==='profile') return reply({authorized:true});
     if(body.action==='dashboard') {
       const result=await db.from('restaurant_orders').select('*').order('created_at',{ascending:false}).limit(300);

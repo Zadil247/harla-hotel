@@ -1,4 +1,4 @@
-import { AdminServiceNav, Navbar } from './components.js';
+import { Navbar } from './components.js';
 import { images, siteConfig } from './data.js';
 
 export const sections = [['pending', 'Pending Review'], ['approved', 'Approved'], ['kitchen', 'Sent to Kitchen'], ['declined', 'Declined']];
@@ -19,7 +19,7 @@ export function restaurantShell(content, login = false) {
     <section class="admin-hero"><div><p class="eyebrow">Restaurant Team${login ? ' Access' : ''}</p><h1>Harla Hotel Restaurant</h1>
       <p>${login ? 'Sign in to manage restaurant orders, review payments, and keep the kitchen up to date.' : 'Review orders, verify payments, and manage the handoff to your kitchen.'}</p></div>
       <img src="${images.logo}" alt="${siteConfig.brandName} logo" /></section>
-    ${AdminServiceNav('restaurant')}${content}
+    ${content}
     <p class="restaurant-admin-contact">Restaurant enquiries: <a href="mailto:${siteConfig.restaurantEmail}">${siteConfig.restaurantEmail}</a></p></main>`;
 }
 

@@ -1,4 +1,4 @@
-import { AdminServiceNav, Navbar } from "./components.js?v=20260916-v1-room-inventory-authority";
+import { Navbar } from "./components.js?v=20260916-v1-room-inventory-authority";
 import { images, siteConfig } from "./data.js?v=20260916-v1-room-inventory-authority";
 import { requireRoomAdminAccess, roomAdminRequest } from "./room-api.js?v=20260916-v1-room-inventory-authority";
 import {
@@ -301,7 +301,7 @@ function dashboardShell(content) {
         </div>
         <img src="${images.logo}" alt="${siteConfig.brandName} logo" />
       </section>
-      ${AdminServiceNav("room")}
+
       ${content}
     </main>
   `;

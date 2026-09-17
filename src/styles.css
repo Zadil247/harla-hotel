@@ -5826,3 +5826,35 @@ textarea {
   .restaurant-admin-page .admin-toolbar { justify-content: stretch; }
 }
 @media(max-width:640px) { .restaurant-menu-filters {grid-template-columns:1fr;} .restaurant-menu-image {height:150px;} .order-summary{position:static;} }
+
+/* Management uses the same Harla admin layout, with a readable activity feed. */
+.master-admin-shell { max-width: 1440px; }
+.master-departments .admin-service-nav { margin-bottom: 0; }
+.master-tabs, .master-download, .master-filters { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; }
+.master-tabs { margin: 26px 0; }
+.master-metrics { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 14px; margin: 22px 0; }
+.master-metric { text-align: left; border: 1px solid #dcd3bd; border-radius: 14px; background: #fff; padding: 22px 18px; color: #272219; cursor: pointer; }
+.master-metric.is-active { border-color: #b28a3e; background: #fff9ec; }
+.master-metric strong { display: block; font-size: 32px; line-height: 1.2; }
+.master-metric span, .master-metric small { display: block; margin-top: 8px; }
+.master-metric small { color: #716a5d; font-size: 11px; }
+.master-feed { max-height: 490px; overflow: auto; }
+.master-activity { display: grid; grid-template-columns: 10px 1fr auto; gap: 16px; padding: 18px 4px; border-bottom: 1px solid #eee8db; }
+.master-activity p { margin: 6px 0; }
+.master-activity small, .master-activity time, #master-live-status { color: #6d6558; font-size: 13px; }
+.master-activity-dot { background: #ae843b; width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; }
+.master-reference { overflow-wrap: anywhere; color: #726754; font-size: 12px; }
+.master-record-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; margin-top: 22px; }
+.master-record h3 { margin: 10px 0; }
+.master-record .admin-order-details { margin-top: 18px; }
+.master-record p, .master-record dd { overflow-wrap: anywhere; }
+.master-filters label, .master-download label { display: grid; gap: 8px; font-size: 14px; }
+.master-filters input, .master-filters select, .master-download select { min-height: 45px; border: 1px solid #d8d0c0; border-radius: 8px; padding: 10px 12px; background: white; color: #24211b; max-width: 100%; }
+.master-download { margin-top: 24px; }
+.master-checkbox { display: flex; gap: 12px; align-items: center; }
+.master-checkbox input { width: 18px; min-height: 18px; }
+.master-history-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; border-bottom: 1px solid #eee8db; padding: 18px 0; }
+.master-history-row p { margin: 6px 0; overflow-wrap: anywhere; }
+.master-admin-shell button:disabled { opacity: .55; cursor: wait; }
+@media(max-width: 1100px) { .master-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); } .master-record-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width: 650px) { .master-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .master-record-grid { grid-template-columns: 1fr; } .master-activity { grid-template-columns: 8px 1fr; gap: 10px; } .master-activity time { grid-column: 2; } .master-filters, .master-download, .master-history-row { align-items: stretch; flex-direction: column; } .master-departments .admin-service-nav { display: grid; } .master-download label { min-width: 0; } .master-tabs .btn { flex: 1; } }

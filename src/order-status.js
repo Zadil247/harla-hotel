@@ -100,7 +100,7 @@ function render(message = "", order = null) {
         </section>
       </div>
     </main>
-    ${Footer({ email: siteConfig.restaurantEmail })}
+    ${Footer({ email: siteConfig.restaurantEmail, phone: siteConfig.restaurantPhone, whatsapp: siteConfig.restaurantWhatsapp })}
   `;
 
   document.querySelector("[data-header]")?.classList.add("is-scrolled");
