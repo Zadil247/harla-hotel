@@ -60,6 +60,7 @@ function shell(content) {
         </div>
         <img src="${images.logo}" alt="${siteConfig.brandName} logo" />
       </section>
+
       ${content}
     </main>
   `;

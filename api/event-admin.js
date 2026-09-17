@@ -46,11 +46,14 @@ export default {
     if (request.method !== "POST") return response({ error: "Method not allowed." }, 405);
     try {
       const body = await requestJson(request);
-      const supabase = getSupabaseAdmin();
+      let supabase = getSupabaseAdmin();
       const admin = await requestingEventAdmin(supabase, request);
       if (!admin) return response({ error: "Active Harla Hotel Events Team access is required." }, 403);
 
+      supabase = getSupabaseAdmin(admin.id);
+
       if (body.action === "profile") {
+        if (admin.masterAdmin) return response({ profile: { ...admin.masterProfile, role: "event_manager" } });
         const { data: profile, error } = await supabase
           .from("event_admin_users")
           .select("user_id, email, full_name, role, active")

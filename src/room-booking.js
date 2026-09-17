@@ -938,7 +938,7 @@ function successStep() {
       <p class="booking-success-contact">
         Reservations: <a href="mailto:booking@harlahotel.com">booking@harlahotel.com</a>
         <span aria-hidden="true">|</span>
-        <a href="tel:+251915321188">+251 915 321 188</a>
+        <a href="tel:+251984517677">+251 984 517 677</a>
       </p>
     </section>
   `;

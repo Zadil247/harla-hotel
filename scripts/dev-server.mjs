@@ -131,6 +131,7 @@ const server = createServer(async (request, response) => {
   }
 
   const eventApiModules = {
+    "/api/restaurant": "../api/restaurant.js",
     "/api/event-request": "../api/event-request.js",
     "/api/event-portal": "../api/event-portal.js",
     "/api/event-admin": "../api/event-admin.js",

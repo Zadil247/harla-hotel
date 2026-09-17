@@ -11,6 +11,11 @@ import {
 } from "./data.js?v=20260702-booking-availability";
 import { LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260702-booking-availability";
 
+function escapeHtml(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("'", "&#39;");
+}
+
 const navLinks = [
   ["About", "./index.html#about", "about"],
   ["Rooms", "./index.html#rooms", "rooms"],
@@ -25,6 +30,14 @@ const navLinks = [
 function packageWhatsAppUrl(packageName) {
   const message = `Hello Harla Hotel, I want to request the ${packageName}. Please send details.`;
   return `https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+}
+
+export function AdminServiceNav(active) {
+  return `<nav class="admin-service-nav" aria-label="Admin services">${[
+    ['room', 'Room Admin', './admin.html'],
+    ['events', 'Event Hall Admin', './event-admin.html'],
+    ['restaurant', 'Restaurant Admin', './restaurant-admin.html'],
+  ].map(([key, label, href]) => `<a class="btn ${key === active ? 'btn-primary' : 'btn-light'}" href="${href}" ${active === "master" ? 'target="_blank" rel="noopener"' : ""} ${key === active ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
 }
 
 export function Navbar(active = "home") {
@@ -196,7 +209,7 @@ export function VideoAdSection() {
   return `
     <section class="section video-ad" id="video" aria-labelledby="video-ad-title">
       <div class="section-heading reveal">
-        <p class="eyebrow">Future Video</p>
+        <p class="eyebrow">Discover Harla Hotel</p>
         <h2 id="video-ad-title">Experience Harla Hotel & Harar</h2>
         <p>Watch a preview of the dining and hospitality experience at Harla Hotel.</p>
       </div>
@@ -283,7 +296,7 @@ export function Gallery() {
       <div class="section-heading reveal">
         <p class="eyebrow">Gallery</p>
         <h2 id="gallery-title">A preview of the Harla experience</h2>
-        <p>Use this section for your real hotel, room, restaurant, and hall photography.</p>
+        <p>Explore our rooms, restaurant, event spaces, and Harari cultural surroundings.</p>
       </div>
       <div class="gallery-grid">
         ${images.gallery
@@ -425,7 +438,12 @@ export function BookingForm() {
   `;
 }
 
-export function Footer({ email = siteConfig.email } = {}) {
+export function Footer({ email = siteConfig.email, phone = siteConfig.phone, whatsapp = siteConfig.whatsapp } = {}) {
+  const socialLinks = [
+    ["Facebook", siteConfig.facebook],
+    ["Instagram", siteConfig.instagram],
+    ["TikTok", siteConfig.tiktok],
+  ].filter(([, url]) => /^https:\/\//i.test(String(url || "")));
   return `
     <footer class="footer">
       <div>
@@ -436,16 +454,14 @@ export function Footer({ email = siteConfig.email } = {}) {
       </div>
       <address>
         <!-- REPLACE: Update phone, WhatsApp, email, and address in src/data.js. -->
-        <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>
-        <a href="https://wa.me/${siteConfig.whatsapp.replace(/\D/g, "")}">WhatsApp</a>
+        <a href="tel:${phone.replaceAll(" ", "")}">${phone}</a>
+        <a href="https://wa.me/${whatsapp.replace(/\D/g, "")}">WhatsApp</a>
         <a href="mailto:${email}">${email}</a>
         <span>${siteConfig.address}</span>
       </address>
-      <div class="social-links" aria-label="Social media links">
-        <a href="${siteConfig.facebook}">Facebook</a>
-        <a href="${siteConfig.instagram}">Instagram</a>
-        <a href="${siteConfig.tiktok}">TikTok</a>
-      </div>
+      ${socialLinks.length ? `<div class="social-links" aria-label="Social media links">
+        ${socialLinks.map(([label, url]) => `<a href="${escapeHtml(url)}">${label}</a>`).join("")}
+      </div>` : ""}
     </footer>
   `;
 }
@@ -483,7 +499,7 @@ export function App() {
         <div class="section-heading reveal">
           <p class="eyebrow">Rooms & Suites</p>
           <h2 id="rooms-title">Comfortable stays with a premium touch</h2>
-          <p>Room prices are ready for your final rates. Each card can connect directly to your booking workflow later.</p>
+          <p>Choose your stay dates to see current room rates and availability, then book your stay with us.</p>
         </div>
         <div class="room-photo-strip reveal" aria-label="Actual Harla Hotel room and hallway photos">
           ${roomHighlights
@@ -516,7 +532,7 @@ export function App() {
           <h2 id="contact-title">Tell Harla Hotel what you need</h2>
           <p>
             Send a booking inquiry for rooms, restaurant reservations, event hall planning, or hotel + tour
-            packages. Submissions can save to Supabase once your project URL and public anon key are configured.
+            packages. Our team will review your request and contact you to discuss the details.
           </p>
           <div class="contact-list">
             <a href="tel:${siteConfig.phone.replaceAll(" ", "")}">${siteConfig.phone}</a>

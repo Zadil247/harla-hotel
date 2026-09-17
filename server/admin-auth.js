@@ -13,6 +13,9 @@ export async function requestingAdmin(supabase, request) {
     return null;
   }
 
+  const master = await masterMembership(supabase, data.user.id);
+  if (master) return { ...data.user, masterAdmin: true, masterProfile: master, roomAdminRole: "master_admin", eventAdminRole: "event_manager" };
+
   const { data: admin, error: adminError } = await supabase
     .from("admin_users")
     .select("user_id, active")
@@ -49,6 +52,9 @@ export async function requestingEventAdmin(supabase, request) {
   if (error || !data.user) {
     return null;
   }
+
+  const master = await masterMembership(supabase, data.user.id);
+  if (master) return { ...data.user, masterAdmin: true, masterProfile: master, roomAdminRole: "master_admin", eventAdminRole: "event_manager" };
 
   const { data: admin, error: adminError } = await supabase
     .from("event_admin_users")
@@ -87,6 +93,9 @@ export async function requestingRoomAdmin(supabase, request) {
     return null;
   }
 
+  const master = await masterMembership(supabase, data.user.id);
+  if (master) return { ...data.user, masterAdmin: true, masterProfile: master, roomAdminRole: "master_admin", eventAdminRole: "event_manager" };
+
   const { data: admin, error: adminError } = await supabase
     .from("room_admin_users")
     .select("user_id, active, role")
@@ -115,4 +124,19 @@ export async function requestingRoomAdmin(supabase, request) {
   return admin && allowedRoles.has(admin.role)
     ? { ...data.user, roomAdminRole: admin.role }
     : null;
+}
+
+async function masterMembership(supabase, userId) {
+  const { data, error } = await supabase.from("master_admin_users").select("user_id,email,full_name,active").eq("user_id", userId).eq("active", true).maybeSingle();
+  if (error) throw new Error("Master Admin authorization could not be checked.", { cause: error });
+  return data;
+}
+
+export async function requestingMasterAdmin(supabase, request) {
+  const authorization = request.headers.get("authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return null;
+  const { data, error } = await supabase.auth.getUser(authorization.slice(7).trim());
+  if (error || !data.user) return null;
+  const master = await masterMembership(supabase, data.user.id);
+  return master ? { ...data.user, masterAdmin: true, masterProfile: master } : null;
 }

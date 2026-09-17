@@ -5749,3 +5749,112 @@ textarea {
     animation-duration: 1.8s;
   }
 }
+
+/* Restaurant catalogue imported from Harla's menu. */
+.restaurant-menu-filters { display:grid;grid-template-columns:2fr 1fr;gap:16px;margin:24px 0; }
+.restaurant-menu-filters label { display:grid;gap:8px;font-weight:600; }
+.restaurant-menu-filters input,.restaurant-menu-filters select { width:100%;padding:12px;border:1px solid #d8cfba;border-radius:8px;background:#fff;color:#242321; }
+.restaurant-menu-image { width:100%;height:170px;object-fit:cover;border-radius:12px; }
+.menu-item-card[hidden],.menu-category[hidden] { display:none!important; }
+.order-number-card strong { overflow-wrap:anywhere; }
+.admin-service-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.restaurant-admin-shell > .admin-card,
+.restaurant-admin-shell > .admin-panel,
+.restaurant-admin-summary {
+  margin-bottom: 24px;
+}
+
+.restaurant-admin-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  overflow: visible;
+}
+
+.restaurant-admin-summary .event-admin-summary-item { padding: 20px; }
+.restaurant-admin-summary .event-admin-summary-item span { font-size: 0.85rem; }
+.restaurant-admin-status:empty { display: none; }
+.restaurant-admin-status { margin: 0 0 22px; }
+.restaurant-admin-page .admin-settings-form > label:not(.toggle-row) { display: grid; gap: 8px; }
+.restaurant-admin-page .admin-settings-form > button { justify-self: start; }
+.restaurant-admin-records { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.restaurant-admin-records > .empty-state { grid-column: 1 / -1; padding: 14px 0; }
+.restaurant-records-heading { align-items: end; flex-wrap: wrap; }
+.restaurant-records-heading p:last-child { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.restaurant-order-filters { display: flex; flex-wrap: wrap; gap: 12px; }
+.restaurant-order-filters label { display: grid; gap: 6px; font-size: 0.82rem; font-weight: 800; }
+.restaurant-order-filters input { width: 260px; max-width: 100%; }
+.restaurant-order-record { min-width: 0; overflow-wrap: anywhere; }
+.restaurant-order-reference { letter-spacing: 0.03em; font-size: 0.7rem; }
+.restaurant-order-created { margin: 8px 0 0; color: var(--muted); font-size: 0.78rem; }
+.restaurant-order-record .admin-order-card-head { flex-wrap: wrap; }
+.restaurant-order-wide { grid-column: 1 / -1; }
+.restaurant-order-items h4 { margin: 0 0 8px; }
+.restaurant-order-items ul { list-style: none; padding: 0; margin: 0; }
+.restaurant-order-items li,
+.restaurant-order-total { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; }
+.restaurant-order-items li { border-bottom: 1px solid var(--line); }
+.restaurant-order-items li strong,
+.restaurant-order-total strong { white-space: nowrap; }
+.restaurant-order-total { color: var(--green); font-weight: 900; }
+.restaurant-proof { display: grid; gap: 10px; justify-items: start; }
+.restaurant-proof a { color: var(--green-2); text-decoration: underline; font-size: 0.84rem; }
+.restaurant-record-note { margin: 0; color: var(--muted); font-size: 0.88rem; }
+.restaurant-login-note { padding-top: 12px; color: var(--muted); font-size: 0.85rem; }
+.restaurant-admin-contact { color: var(--muted); font-size: 0.88rem; overflow-wrap: anywhere; }
+.restaurant-admin-contact a { color: var(--green-2); text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .restaurant-admin-records { grid-template-columns: 1fr; }
+  .restaurant-admin-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .admin-service-nav { display: grid; grid-template-columns: 1fr; }
+  .restaurant-admin-summary .event-admin-summary-item { padding: 16px; }
+  .restaurant-order-filters,
+  .restaurant-order-filters label,
+  .restaurant-order-filters input { width: 100%; }
+  .restaurant-admin-page .admin-panel-heading { align-items: start; flex-direction: column; }
+  .restaurant-admin-page .admin-order-grid { padding: 12px; }
+  .restaurant-admin-page .admin-user { overflow-wrap: anywhere; }
+  .restaurant-admin-page .admin-toolbar { justify-content: stretch; }
+}
+@media(max-width:640px) { .restaurant-menu-filters {grid-template-columns:1fr;} .restaurant-menu-image {height:150px;} .order-summary{position:static;} }
+
+/* Management uses the same Harla admin layout, with a readable activity feed. */
+.master-admin-shell { max-width: 1440px; }
+.master-departments .admin-service-nav { margin-bottom: 0; }
+.master-tabs, .master-download, .master-filters { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; }
+.master-tabs { margin: 26px 0; }
+.master-metrics { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 14px; margin: 22px 0; }
+.master-metric { text-align: left; border: 1px solid #dcd3bd; border-radius: 14px; background: #fff; padding: 22px 18px; color: #272219; cursor: pointer; }
+.master-metric.is-active { border-color: #b28a3e; background: #fff9ec; }
+.master-metric strong { display: block; font-size: 32px; line-height: 1.2; }
+.master-metric span, .master-metric small { display: block; margin-top: 8px; }
+.master-metric small { color: #716a5d; font-size: 11px; }
+.master-feed { max-height: 490px; overflow: auto; }
+.master-activity { display: grid; grid-template-columns: 10px 1fr auto; gap: 16px; padding: 18px 4px; border-bottom: 1px solid #eee8db; }
+.master-activity p { margin: 6px 0; }
+.master-activity small, .master-activity time, #master-live-status { color: #6d6558; font-size: 13px; }
+.master-activity-dot { background: #ae843b; width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; }
+.master-reference { overflow-wrap: anywhere; color: #726754; font-size: 12px; }
+.master-record-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; margin-top: 22px; }
+.master-record h3 { margin: 10px 0; }
+.master-record .admin-order-details { margin-top: 18px; }
+.master-record p, .master-record dd { overflow-wrap: anywhere; }
+.master-filters label, .master-download label { display: grid; gap: 8px; font-size: 14px; }
+.master-filters input, .master-filters select, .master-download select { min-height: 45px; border: 1px solid #d8d0c0; border-radius: 8px; padding: 10px 12px; background: white; color: #24211b; max-width: 100%; }
+.master-download { margin-top: 24px; }
+.master-checkbox { display: flex; gap: 12px; align-items: center; }
+.master-checkbox input { width: 18px; min-height: 18px; }
+.master-history-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; border-bottom: 1px solid #eee8db; padding: 18px 0; }
+.master-history-row p { margin: 6px 0; overflow-wrap: anywhere; }
+.master-admin-shell button:disabled { opacity: .55; cursor: wait; }
+@media(max-width: 1100px) { .master-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); } .master-record-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width: 650px) { .master-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .master-record-grid { grid-template-columns: 1fr; } .master-activity { grid-template-columns: 8px 1fr; gap: 10px; } .master-activity time { grid-column: 2; } .master-filters, .master-download, .master-history-row { align-items: stretch; flex-direction: column; } .master-departments .admin-service-nav { display: grid; } .master-download label { min-width: 0; } .master-tabs .btn { flex: 1; } }

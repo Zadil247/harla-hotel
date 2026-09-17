@@ -301,6 +301,7 @@ function dashboardShell(content) {
         </div>
         <img src="${images.logo}" alt="${siteConfig.brandName} logo" />
       </section>
+
       ${content}
     </main>
   `;
