@@ -1,3 +1,4 @@
+import { requestNumberLabel } from './request-number.js';
 import { Navbar, AdminServiceNav } from './components.js';
 import { images, siteConfig } from './data.js';
 import { getSupabaseClient } from './supabase-client.js';
@@ -5,7 +6,7 @@ import { escapeHtml as esc, wireRestaurantNav } from './restaurant-admin-ui.js';
 
 const app = document.querySelector('#master-admin-app');
 const loginPage = location.pathname.includes('master-admin-login');
-const state = { profile: null, data: null, settings: null, history: [], filter: 'all', search: '', tab: 'overview', busy: false, refreshing: false };
+const state = { profile: null, data: null, settings: null, history: [], counters: [], filter: 'all', search: '', tab: 'overview', busy: false, refreshing: false };
 const date = value => value ? new Date(value).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa', dateStyle: 'medium', timeStyle: 'short' }) : 'Not scheduled';
 const label = value => String(value || 'pending').replaceAll('_', ' ');
 const statusText = message => { const target = document.querySelector('#master-status'); if (target) target.textContent = message; };
@@ -35,12 +36,15 @@ function login(message = '') {
   });
 }
 function render() {
-  shell(`<section class="admin-toolbar"><span class="admin-user">${esc(state.profile.full_name || state.profile.email)}</span><a href="./index.html" class="btn btn-light" target="_blank" rel="noopener">View Website</a><button class="btn btn-light" data-signout>Sign Out</button></section><section class="admin-panel master-departments"><div><p class="eyebrow">Department Access</p><h2>Open an admin dashboard</h2><p>Your management login works across all three departments. Each opens in a new tab.</p></div>${AdminServiceNav('master')}</section><nav class="master-tabs" aria-label="Management views"><button data-tab="overview" class="btn ${state.tab === 'overview' ? 'btn-primary' : 'btn-light'}">Live Overview</button><button data-tab="reports" class="btn ${state.tab === 'reports' ? 'btn-primary' : 'btn-light'}">Reports &amp; Email Schedule</button></nav><div id="master-content">${state.tab === 'overview' ? overview() : reports()}</div>`);
+  shell(`<section class="admin-toolbar"><span class="admin-user">${esc(state.profile.full_name || state.profile.email)}</span><a href="./index.html" class="btn btn-light" target="_blank" rel="noopener">View Website</a><a class="btn btn-light" href="./admin-account.html?service=master">Account Settings</a><button class="btn btn-light" data-signout>Sign Out</button></section><section class="admin-panel master-departments"><div><p class="eyebrow">Department Access</p><h2>Open an admin dashboard</h2><p>Your management login works across all three departments. Each opens in a new tab.</p></div>${AdminServiceNav('master')}</section><nav class="master-tabs" aria-label="Management views"><button data-tab="overview" class="btn ${state.tab === 'overview' ? 'btn-primary' : 'btn-light'}">Live Overview</button><button data-tab="reports" class="btn ${state.tab === 'reports' ? 'btn-primary' : 'btn-light'}">Reports &amp; Email Schedule</button><button data-tab="numbering" class="btn ${state.tab === 'numbering' ? 'btn-primary' : 'btn-light'}">Request Numbering</button></nav><div id="master-content">${state.tab === 'overview' ? overview() : state.tab === 'numbering' ? numbering() : reports()}</div>`);
   document.querySelector('[data-signout]').onclick = async () => { await (await getSupabaseClient()).auth.signOut(); location.replace('./master-admin-login.html'); };
   document.querySelectorAll('[data-tab]').forEach(button => button.onclick = async () => {
     state.tab = button.dataset.tab;
     if (state.tab === 'reports') {
       try { const data = await request('settings'); state.settings = data.settings; state.history = data.history; } catch (error) { statusText(error.message); return; }
+    }
+    if (state.tab === 'numbering') {
+      try { state.counters = (await request('numbering')).counters; } catch (error) { statusText(error.message); return; }
     }
     render();
   });
@@ -57,7 +61,7 @@ function activityRows() {
 function recordRows() {
   const query = state.search.toLowerCase().trim();
   const rows = state.data.sources.filter(source => state.filter === 'all' || source.key === state.filter).flatMap(source => source.records.map(record => ({ ...record, service: source.label, key: source.key }))).filter(row => !query || [row.name, row.reference, row.phone].some(value => String(value || '').toLowerCase().includes(query))).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  return rows.length ? rows.map(row => `<article class="admin-order-card master-record"><p class="eyebrow">${esc(row.service)}</p><h3>${esc(row.name)}</h3><p class="master-reference">${esc(row.reference)}</p><span class="status-pill">${esc(label(row.status))}</span><dl class="admin-order-details"><div><dt>Received</dt><dd>${esc(date(row.created_at))}</dd></div><div><dt>Contact</dt><dd>${esc(row.phone || '—')}${row.email ? `<br>${esc(row.email)}` : ''}</dd></div>${row.amount !== null ? `<div><dt>Recorded value</dt><dd>${Number(row.amount).toLocaleString('en-US')} ${esc(row.currency)}</dd></div>` : ''}${row.payment_status ? `<div><dt>Payment</dt><dd>${esc(label(row.payment_status))}</dd></div>` : ''}</dl>${row.kitchen === 'entered' ? '<p>Sent to kitchen</p>' : ''}${row.details ? `<p>${esc(row.details)}</p>` : ''}</article>`).join('') : '<p class="empty-state">No records match this view.</p>';
+  return rows.length ? rows.map(row => `<article class="admin-order-card master-record"><p class="eyebrow">${esc(row.service)}</p><h3>${esc(row.name)}</h3><p class="master-reference">${esc(requestNumberLabel(row))}<br>${esc(row.reference)}</p><span class="status-pill">${esc(label(row.status))}</span><dl class="admin-order-details"><div><dt>Received</dt><dd>${esc(date(row.created_at))}</dd></div><div><dt>Contact</dt><dd>${esc(row.phone || '—')}${row.email ? `<br>${esc(row.email)}` : ''}</dd></div>${row.amount !== null ? `<div><dt>Recorded value</dt><dd>${Number(row.amount).toLocaleString('en-US')} ${esc(row.currency)}</dd></div>` : ''}${row.payment_status ? `<div><dt>Payment</dt><dd>${esc(label(row.payment_status))}</dd></div>` : ''}</dl>${row.kitchen === 'entered' ? '<p>Sent to kitchen</p>' : ''}${row.details ? `<p>${esc(row.details)}</p>` : ''}</article>`).join('') : '<p class="empty-state">No records match this view.</p>';
 }
 function reports() {
   const s = state.settings;
@@ -70,7 +74,18 @@ async function withButton(button, task) {
   button.disabled = true;
   try { await task(); } catch (error) { statusText(error.message); } finally { if (button.isConnected) button.disabled = false; }
 }
+function numbering() {
+  return `<section class="admin-panel"><p class="eyebrow">Request Numbering</p><h2>Start a new series at 1</h2><p>New requests receive a number within their service. Resetting starts a new series; it keeps every existing booking, payment reference, report and activity entry. Previous records retain their series and number. Records received before numbering was enabled show “Earlier record”.</p><p>After setting up your staff logins, reset the services you want to start fresh.</p><div class="master-record-grid">${state.counters.map(counter => `<article class="admin-order-card"><h3>${esc(state.data.sources.find(source => source.key === counter.service)?.label || counter.service)}</h3><p>Current series: <strong>${counter.series}</strong><br>Next request: <strong>#${counter.next_number}</strong><br>Started: ${esc(date(counter.started_at))}</p><form class="booking-form" data-reset-numbering="${counter.service}"><label>Type RESET to start a new series<input name="confirmation" autocomplete="off" pattern="RESET" required /></label><button class="btn btn-light" type="submit">Restart at 1</button></form></article>`).join('')}</div></section>`;
+}
 function wireContent() {
+  document.querySelectorAll('[data-reset-numbering]').forEach(form => form.addEventListener('submit', event => {
+    event.preventDefault();
+    const service = form.dataset.resetNumbering, counter = state.counters.find(item => item.service === service);
+    withButton(form.querySelector('button'), async () => {
+      await request('reset_numbering', { service, series: counter.series, confirmation: form.elements.confirmation.value });
+      state.counters = (await request('numbering')).counters; render(); statusText('New numbering series started. The next request for this service will be #1. Existing records are preserved.');
+    });
+  }));
   document.querySelector('[data-refresh]')?.addEventListener('click', () => refresh(true));
   document.querySelectorAll('[data-service]').forEach(button => button.onclick = () => { state.filter = button.dataset.service; updateOverview(); });
   document.querySelector('#master-service')?.addEventListener('change', event => { state.filter = event.target.value; document.querySelector('#master-records').innerHTML = recordRows(); });

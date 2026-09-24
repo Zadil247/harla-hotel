@@ -15,7 +15,7 @@ async function dashboard(db) {
     const result = await db.from(source.table).select(source.columns, { count: 'exact' }).order('created_at', { ascending: false }).limit(40);
     const rows = checked(result);
     return { key: source.key, label: source.label, count: result.count, records: rows.map(row => ({
-      id: row.id, reference: row[source.ref], name: row[source.name], phone: row.phone, email: row.email,
+      id: row.id, request_number: row.request_number, request_series: row.request_series, reference: row[source.ref], name: row[source.name], phone: row.phone, email: row.email,
       status: row.status, payment_status: row.payment_status, created_at: row.created_at,
       amount: ['rooms', 'restaurant', 'events'].includes(source.key) ? recordedValue(source.key, row) : null,
       currency: valueCurrency(source.key, row), kitchen: row.odoo_status,
@@ -103,6 +103,13 @@ export async function masterAdminRequest(request, body) {
     if (!admin) return reply({ error: 'Active Master Admin access is required.' }, 403);
     if (body.action === 'profile') return reply({ profile: admin.masterProfile });
     if (body.action === 'dashboard') return reply(await dashboard(db));
+    if (body.action === 'numbering') return reply({ counters: checked(await db.from('request_number_counters').select('*').order('service')) });
+    if (body.action === 'reset_numbering') {
+      if (body.confirmation !== 'RESET' || !Number.isInteger(body.series) || !reportSources.some(source => source.key === body.service)) return reply({ error: 'Choose a service and type RESET to confirm.' }, 400);
+      const result = await db.rpc('reset_request_numbering', { p_service: body.service, p_expected_series: body.series, p_actor: admin.id });
+      if (result.error?.code === '40001') return reply({ error: 'Numbering changed in another session. Refresh and try again.' }, 409);
+      return reply({ counter: checked(result) });
+    }
     if (body.action === 'settings') return reply({ settings: await settings(db), history: await reportHistory(db) });
     if (body.action === 'save_settings') {
       let values;

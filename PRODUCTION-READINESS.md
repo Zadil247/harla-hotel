@@ -1,5 +1,18 @@
 # Harla V1 readiness checkpoint — 17 September 2026
 
+## Account settings and resettable numbering — 24 September 2026
+
+This section supersedes the earlier owner-review pause. The owner confirmed the corrected preview works and explicitly requested deployment of the new account and numbering controls.
+
+- Added Account Settings to room, restaurant, event and master dashboards. Each user can change their login email/password after their current password is verified. Login email changes are administrator-assigned and explicitly confirmed twice in the form; they do not change mailbox passwords.
+- Master Admin can create and edit department-only staff accounts. Other staff cannot list or edit these accounts; management accounts cannot be edited through department controls. Passwords are entered only in the website and are never recorded in audit logs.
+- Rooms already uses booking@harlahotel.com; Events already uses events@harlahotel.com. Restaurant does not yet have its own login: owner must choose the password under Account Settings → Create Restaurant Login (restaurant@harlahotel.com is prefilled). No credentials were changed by this release, and no password was requested in chat. Master can choose its new email/password in Your Login; no destination was invented.
+- Applied admin_request_numbering (local 20260924201301). Each service starts its next new request at #1. Master can start a new series at #1 whenever needed. Unique series/number pairs, transactional counter locks, immutable assigned numbers, stale-reset protection and audit entries preserve earlier records and permanent customer/payment references. Existing records show Earlier record. Excel includes the series and number.
+- Live rollback-only numbering regression passed: increasing numbers, spoofed-number rejection, immutable prior numbers, reset to 1, retained history, stale reset rejection, master authorization, client denial and audit. No test records/counter changes retained.
+- Account tests passed for guest/staff denial, current-password verification, service-only provisioning, protected management accounts, own-account updates and password-free audit. All seven workflow/report/account/PDF suites, production build, JavaScript syntax and diff checks passed.
+- No new security advisor warnings from these changes; counter RLS intentionally has no client policy. Pre-existing customer lookup RPC and leaked-password-protection warnings remain.
+- Production deployment is now authorized by the owner. Credential changes require the owner to enter chosen passwords after deployment. Signed-in browser credential changes were deliberately not performed with invented or chat-supplied passwords.
+
 ## Master dashboard loading fix — 24 September 2026
 
 - Confirmed the reported loading failure in preview logs: dashboard requests returned PostgreSQL 42501 for restaurant_requests and package_bookings. The server role lacked SELECT on those two legacy enquiry tables.

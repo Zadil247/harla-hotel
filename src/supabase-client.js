@@ -12,7 +12,7 @@ export async function getSupabaseClient() {
   }
 
   if (!clientPromise) {
-    clientPromise = import("https://esm.sh/@supabase/supabase-js@2").then(({ createClient }) =>
+    clientPromise = import("https://esm.sh/@supabase/supabase-js@2.110.8").then(({ createClient }) =>
       createClient(supabaseConfig.url, supabaseConfig.anonKey, {
         auth: {
           persistSession: true,

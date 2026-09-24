@@ -1,3 +1,4 @@
+import { requestNumberLabel } from './request-number.js';
 import { Navbar } from "./components.js?v=20260916-v1-room-inventory-authority";
 import { images, siteConfig } from "./data.js?v=20260916-v1-room-inventory-authority";
 import { requireRoomAdminAccess, roomAdminRequest } from "./room-api.js?v=20260916-v1-room-inventory-authority";
@@ -174,7 +175,7 @@ function roomBookingCard(booking, group) {
     <article class="admin-order-card">
       <div class="admin-order-card-head">
         <div>
-          <p class="eyebrow">${escapeHtml(booking.booking_number || "No booking reference")}</p>
+          <p class="eyebrow">${escapeHtml(requestNumberLabel(booking))}<br>${escapeHtml(booking.booking_number || "No booking reference")}</p>
           <h3>${escapeHtml(booking.full_name)}</h3>
         </div>
         <div class="room-admin-state-pills">
@@ -342,7 +343,7 @@ async function renderDashboard(adminProfile) {
       <section class="admin-toolbar">
         <div><strong>${pendingCount}</strong><span>pending room requests</span></div>
         <span class="admin-user">${escapeHtml(adminProfile.full_name || adminProfile.email)}</span>
-        <button class="btn btn-light" type="button" id="admin-refresh">Refresh</button>
+        <a class="btn btn-light" href="./admin-account.html?service=rooms">Account Settings</a><button class="btn btn-light" type="button" id="admin-refresh">Refresh</button>
         <button class="btn btn-primary" type="button" id="admin-sign-out">Sign Out</button>
       </section>
       ${adminNotice ? `<section class="admin-card admin-notice" role="status"><p>${escapeHtml(adminNotice)}</p></section>` : ""}

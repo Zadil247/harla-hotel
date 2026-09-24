@@ -1,4 +1,5 @@
 import { masterAdminRequest } from "../server/master-admin-api.js";
+import { adminAccountRequest } from "../server/admin-accounts.js";
 import { requestingRoomAdmin } from "../server/admin-auth.js";
 import {
   adminRoomRows,
@@ -62,6 +63,7 @@ export default {
     if (request.method !== "POST") return response({ error: "Method not allowed." }, 405);
     try {
       const body = await requestJson(request);
+      if (body.scope === "account") return await adminAccountRequest(request, body);
       if (body.scope === "manager") return await masterAdminRequest(request, body);
       let supabase = getSupabaseAdmin();
       const admin = await requestingRoomAdmin(supabase, request);

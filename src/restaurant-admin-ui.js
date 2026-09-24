@@ -1,3 +1,4 @@
+import { requestNumberLabel } from './request-number.js';
 import { Navbar } from './components.js';
 import { images, siteConfig } from './data.js';
 
@@ -52,7 +53,7 @@ export function orderCard(order) {
   const id = escapeHtml(order.id);
   const action = (transition, text, className = '') => `<button class="status-action ${className}" type="button" data-id="${id}" data-transition="${transition}">${text}</button>`;
   return `<article class="admin-order-card restaurant-order-record" aria-label="Order ${escapeHtml(order.order_number)}">
-    <div class="admin-order-card-head"><div><p class="eyebrow restaurant-order-reference">${escapeHtml(order.order_number)}</p><h3>${escapeHtml(order.customer_name)}</h3><p class="restaurant-order-created">${escapeHtml(created)} · Ethiopia time</p></div><span class="status-pill status-${escapeHtml(order.status)}">${label}</span></div>
+    <div class="admin-order-card-head"><div><p class="eyebrow restaurant-order-reference">${escapeHtml(requestNumberLabel(order))}<br>${escapeHtml(order.order_number)}</p><h3>${escapeHtml(order.customer_name)}</h3><p class="restaurant-order-created">${escapeHtml(created)} · Ethiopia time</p></div><span class="status-pill status-${escapeHtml(order.status)}">${label}</span></div>
     <dl class="admin-order-details">
       <div><dt>Order type</dt><dd>${escapeHtml(order.order_type)}</dd></div><div><dt>Phone</dt><dd>${escapeHtml(order.phone)}</dd></div>
       ${order.order_type === 'Delivery' ? `<div class="restaurant-order-wide"><dt>Delivery address</dt><dd>${escapeHtml([order.address_area, order.custom_address].filter(Boolean).join(' · '))}</dd></div>` : ''}
