@@ -1,3 +1,4 @@
+import { vipAvailability, vipDashboard, createVipRequest, transitionVip } from '../server/restaurant-vip.js';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { requestingAdmin } from '../server/admin-auth.js';
@@ -31,6 +32,8 @@ export default {async fetch(request) {
     let body;try {body=JSON.parse(raw);} catch {throw new PublicError('Invalid JSON.');}
     if(!body || typeof body!=='object') throw new PublicError('Invalid request.');
     let db=getSupabaseAdmin();
+    if(body.action==='vip_availability') return reply({room:await vipAvailability(db)});
+    if(body.action==='vip_create') return reply({request:await createVipRequest(db,body.request)},201);
     if(body.action==='settings') return reply({settings:await settings(db)});
     if(body.action==='create') {
       const order=normalizeRestaurantOrder(body.order);
@@ -57,6 +60,8 @@ export default {async fetch(request) {
     const admin=await requestingAdmin(db,request);
     if(!admin) return reply({error:'Active Harla Restaurant Admin access is required.'},403);
     db=getSupabaseAdmin(admin.id);
+    if(body.action==='vip_dashboard') return reply(await vipDashboard(db));
+    if(body.action==='vip_transition') return reply(await transitionVip(db,admin,body));
     if(body.action==='profile') return reply({authorized:true});
     if(body.action==='dashboard') {
       const result=await db.from('restaurant_orders').select('*').order('created_at',{ascending:false}).limit(300);

@@ -15,6 +15,7 @@ assert.deepEqual(reportPeriod('weekly', '2026-09-17T05:00:00Z'), { start: '2026-
 assert.throws(() => validateReportSettings({ ...settings, enabled: true, frequency: 'daily', summary_frequency: 'weekly' }), /email/);
 assert.throws(() => validateReportSettings({ ...settings, recipient_email: 'a@b.com\nother@host.com', frequency: 'daily', summary_frequency: 'weekly' }), /email/);
 const records = Object.fromEntries(reportSources.map(source => [source.key, []]));
+records.vip.push({ booking_reference: 'VIP-REPORT-TEST', full_name: 'VIP guest', phone: '+251000000000', request_number: 1, request_series: 1, status: 'contacted', created_at: '2026-09-16T00:00:00Z' });
 records.restaurant.push({ order_number: 'REPORT-TEST', customer_name: '=HYPERLINK("https://example.com")', phone: '+251000000000', status: 'approved', payment_status: 'pay_at_hotel', items: [{ quantity: 2, name: 'Coffee', line_total: 200 }], created_at: '2026-09-16T00:00:00Z' });
 records.events.push({ booking_reference: 'USD-TEST', client_full_name: 'Sample', status: 'pending_review', quoted_amount: 10, quoted_currency: 'USD', created_at: '2026-09-16T00:00:00Z' });
 const data = { start: '2026-09-15T21:00:00Z', end: '2026-09-16T21:00:00Z', generatedAt: '2026-09-17T05:00:00Z', records, previous: { restaurant: 2 }, activity: [{ service: 'Restaurant', action: 'approved', created_at: '2026-09-16T01:00:00Z' }] };
@@ -23,7 +24,11 @@ assert.equal(summary.approvals, 1); assert.equal(summary.services.find(row => ro
 assert.deepEqual(summary.services.find(row => row.service === 'Events').values, { USD: 10 });
 assert(summary.lines.some(line => line.includes('not a collected-revenue')));
 const bytes = await buildWorkbook(data); const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(bytes);
-assert.equal(workbook.worksheets.length, 8);
+assert.equal(workbook.worksheets.length, 9);
+assert.equal(workbook.getWorksheet('VIP dining').getCell('B2').value, 'VIP guest');
+assert.equal(workbook.getWorksheet('VIP dining').getCell('G2').value, 1);
+assert.equal(workbook.getWorksheet('VIP dining').getCell('I2').value, 'Unspecified people; date to discuss; time to discuss (Ethiopia)');
+assert.equal(summary.services.find(row => row.service === 'VIP dining').count, 1);
 assert.equal(workbook.getWorksheet('Restaurant').getCell('B2').type, ExcelJS.ValueType.String);
 assert.equal(workbook.getWorksheet('Restaurant').getCell('B2').value, records.restaurant[0].customer_name);
 assert.equal(workbook.getWorksheet('Restaurant').getCell('H2').value, 200);

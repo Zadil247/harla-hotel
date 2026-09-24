@@ -1,9 +1,10 @@
+import { vipAdminPanel, wireVipAdmin } from './restaurant-vip-admin.js';
 import { getSupabaseClient } from './supabase-client.js';
 import { restaurantRequest } from './restaurant-api.js';
 import { escapeHtml, matchingOrders, orderCard, orderSection, restaurantShell, sections, wireRestaurantNav } from './restaurant-admin-ui.js';
 
 const app = document.querySelector('#restaurant-admin-app');
-const state = { orders: [], settings: null, filter: 'pending', search: '', type: '', busy: false, message: '', email: '' };
+const state = { orders: [], settings: null, vip: null, filter: 'pending', search: '', type: '', busy: false, message: '', email: '' };
 const api = (action, payload = {}) => restaurantRequest(action, payload, true);
 const redirectToLogin = (message = 'login-required') => window.location.replace(`./restaurant-admin-login.html?message=${encodeURIComponent(message)}`);
 
@@ -16,6 +17,7 @@ function render() {
   app.innerHTML = restaurantShell(`
     <section class="admin-toolbar"><div><strong>${state.orders.filter(order => order.status === 'pending').length}</strong><span>pending restaurant orders</span></div><span class="admin-user">${escapeHtml(state.email || 'Restaurant Team')}</span><a class="btn btn-light" href="./restaurant-order.html">View Menu</a><a class="btn btn-light" href="./admin-account.html?service=restaurant">Account Settings</a><button class="btn btn-light" type="button" data-refresh>Refresh</button><button class="btn btn-primary" type="button" data-signout>Sign Out</button></section>
     <p class="admin-status restaurant-admin-status" role="status" aria-live="polite">${escapeHtml(state.message)}</p>
+    ${vipAdminPanel(state.vip)}
     <section class="event-admin-summary restaurant-admin-summary" aria-label="Restaurant order counts">${sections.map(([value, label]) => `<button type="button" class="event-admin-summary-item ${state.filter === value ? 'is-active' : ''}" data-filter="${value}" aria-pressed="${state.filter === value}"><strong>${state.orders.filter(order => orderSection(order) === value).length}</strong><span>${label}</span></button>`).join('')}</section>
     <section class="admin-card restaurant-settings-card"><div class="admin-panel-heading compact-heading"><div><p class="eyebrow">Restaurant Availability</p><h2>Website ordering</h2></div><span class="status-pill ${state.settings.ordering_available ? 'status-approved' : 'status-declined'}">${state.settings.ordering_available ? 'Accepting Orders' : 'Ordering Paused'}</span></div>
       <form id="restaurant-settings" class="admin-settings-form"><label class="toggle-row"><input name="available" type="checkbox" ${state.settings.ordering_available ? 'checked' : ''} /> Accept website orders</label><label>Message when ordering is paused<input name="message" maxlength="300" value="${escapeHtml(state.settings.custom_message)}" placeholder="Please call the restaurant to place an order." /></label><button class="btn btn-primary" type="submit">Save Availability</button></form></section>
@@ -44,7 +46,8 @@ async function run(work) {
 }
 
 async function load() {
-  const data = await api('dashboard');
+  const [data, vip] = await Promise.all([api('dashboard'), api('vip_dashboard')]);
+  state.vip = vip;
   state.orders = data.orders || [];
   state.settings = data.settings;
   render();
@@ -82,6 +85,7 @@ function updateRecords() {
 }
 
 function wire() {
+  wireVipAdmin({ data: state.vip, run, api, load, message: value => { state.message = value; } });
   document.querySelector('[data-refresh]').addEventListener('click', () => run(async () => { state.message = 'Orders refreshed.'; await load(); }));
   document.querySelector('[data-signout]').addEventListener('click', () => run(async () => {
     const { error } = await (await getSupabaseClient()).auth.signOut();
@@ -117,3 +121,26 @@ async function init() {
 }
 
 init();
+
+let vipRefreshing = false;
+async function refreshVipPanel() {
+  if (state.busy || vipRefreshing || document.hidden || !state.vip) return;
+  const panel = document.querySelector('#restaurant-vip-admin');
+  if (!panel || panel.contains(document.activeElement)) return;
+  vipRefreshing = true;
+  try {
+    const data = await api('vip_dashboard');
+    if (!state.busy && panel.isConnected && !panel.contains(document.activeElement)) {
+      state.vip = data; const expanded = panel.querySelector('details')?.open;
+      panel.outerHTML = vipAdminPanel(data);
+      if (expanded) document.querySelector('#restaurant-vip-admin details')?.setAttribute('open', '');
+      wireVipAdmin({ data, run, api, load, message: value => { state.message = value; } });
+    }
+  } catch (error) {
+    if (error.status === 403) { redirectToLogin(); return; }
+    const note = document.querySelector('#restaurant-vip-admin .restaurant-record-note');
+    if (note) note.textContent = 'VIP live updates paused. Use Refresh to try again.';
+  } finally { vipRefreshing = false; }
+}
+setInterval(refreshVipPanel, 10000);
+document.addEventListener('visibilitychange', refreshVipPanel);

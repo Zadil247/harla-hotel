@@ -11,6 +11,7 @@
     "test:room-workflow": "node scripts/test-room-workflow.mjs",
     "test:room-pdf": "node scripts/test-room-pdf.mjs",
     "test:restaurant-workflow": "node scripts/test-restaurant-workflow.mjs",
+    "test:restaurant-vip": "node scripts/test-restaurant-vip.mjs",
     "test:manager-reporting": "node scripts/test-manager-reporting.mjs",
     "test:admin-accounts": "node scripts/test-admin-accounts.mjs"
   },

@@ -1,5 +1,14 @@
 # Harla V1 readiness checkpoint — 17 September 2026
 
+## VIP majlis — 24 September 2026
+
+- Added a dedicated VIP room page, restaurant entry card and three-photo slideshow with crossfades, pause, thumbnails, keyboard/swipe controls and reduced-motion support. The supplied fourth restaurant photo backs the Restaurant Menu heading for dine-in, takeaway and delivery. These are the original supplied photographs: enhancement was blocked by the image-generation usage limit.
+- Name and phone are required; guest count, preferred date and time are optional. Requests receive a server-assigned number starting at 1 and an immutable reference. Restaurant staff call, mark contacted, occupy and release the room. Phone/walk-in occupancy is supported. Occupied rooms show call-only public controls; the database also rejects new requests until release.
+- Applied `20260924225338_restaurant_vip_room.sql`: private service-only tables and RPCs, role checks, row locks, version checks, rate limiting and idempotent submissions. VIP activity, reporting and resettable numbering are integrated with Master Admin.
+- Rollback-only live SQL tests passed for optional fields, retries, staff isolation, contact-before-occupancy, stale actions, concurrent occupancy safeguards, release/reopening, walk-ins, private table/RPC access and staff attribution. No test requests, occupancy or counter changes were retained.
+- VIP validation/UI checks, existing restaurant workflow, Excel reporting, JavaScript syntax and static production build passed. Preview/production visual and HTTP results are recorded in the saved handoff after deployment.
+
+
 ## Account settings and resettable numbering — 24 September 2026
 
 This section supersedes the earlier owner-review pause. The owner confirmed the corrected preview works and explicitly requested deployment of the new account and numbering controls.
