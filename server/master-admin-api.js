@@ -19,7 +19,8 @@ async function dashboard(db) {
       status: row.status, payment_status: row.payment_status, created_at: row.created_at,
       amount: ['rooms', 'restaurant', 'events'].includes(source.key) ? recordedValue(source.key, row) : null,
       currency: valueCurrency(source.key, row), kitchen: row.odoo_status,
-      details: source.key === 'tours' ? [row.package_name, row.check_in, row.check_out, row.guests && `${row.guests} guests`, row.message].filter(Boolean).join(' · ')
+      details: source.key === 'vip' ? [`${row.guests ?? 'Unspecified'} people`, row.preferred_date, row.preferred_time && `${row.preferred_time.slice(0, 5)} Ethiopia time`].filter(Boolean).join(' · ')
+        : source.key === 'tours' ? [row.package_name, row.check_in, row.check_out, row.guests && `${row.guests} guests`, row.message].filter(Boolean).join(' · ')
         : source.key === 'tables' ? [row.reservation_date, row.reservation_time, row.guests && `${row.guests} guests`, row.message].filter(Boolean).join(' · ')
         : source.key === 'event_enquiries' ? [row.event_type, row.event_date, row.guests && `${row.guests} guests`, row.message].filter(Boolean).join(' · ') : '',
     })) };

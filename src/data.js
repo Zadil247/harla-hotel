@@ -40,7 +40,7 @@ export const images = {
   about: "./assets/hotel/harla-hotel-reception.jpeg",
   hallway: "./assets/hotel/harla-hotel-hallway.jpeg",
   reception: "./assets/hotel/harla-hotel-reception.jpeg",
-  vipMajlis: "./assets/restaurant/harla-restaurant-gallery-1.jpeg",
+  vipMajlis: "./assets/restaurant/vip/majlis-03.jpeg",
   restaurantVipPrivateRoom: "./assets/restaurant/harla-restaurant-gallery-1.jpeg",
   restaurantVipGallerySeating: "./assets/restaurant/harla-restaurant-vip-gallery-seating.jpeg",
   restaurantVipGalleryRoom: "./assets/restaurant/harla-restaurant-vip-gallery-room.jpeg",
@@ -59,7 +59,7 @@ export const images = {
     "./assets/rooms/harla-room-bed.jpeg",
     "./assets/rooms/harla-room-desk.jpeg",
   ],
-  restaurant: "./assets/restaurant/harla-restaurant-gallery-1.jpeg",
+  restaurant: "./assets/restaurant/restaurant-menu-interior.jpeg",
   event: "./assets/events/harla-event-hall.jpeg",
   packages: "./assets/packages/harla-packages-brand-wall.jpeg",
   gallery: [

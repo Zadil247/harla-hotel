@@ -1,3 +1,4 @@
+import { restaurantRequest } from './restaurant-api.js';
 import { Footer, Navbar } from "./components.js?v=20260521-restaurant-workflow";
 import {
   images,
@@ -29,19 +30,19 @@ app.innerHTML = `
 
     <section class="section split-feature" aria-labelledby="vip-room-title">
       <div class="split-feature-media reveal">
-        <!-- REPLACE: Replace this with final VIP room/mejlis photo if you want a different image. -->
-        <img src="${images.vipMajlis}" alt="VIP Private Room with traditional mejlis seating" loading="lazy" />
+        <a class="vip-explore-link" href="./restaurant-vip.html"><img src="${images.vipMajlis}" alt="Explore the VIP majlis photo slideshow" loading="lazy" /><span>Explore the VIP Majlis ↗</span></a>
       </div>
       <div class="reveal">
         <p class="eyebrow">VIP Private Room</p>
-        <h2 id="vip-room-title">${restaurantPage.vipTitle}</h2>
+        <h2 id="vip-room-title"><a href="./restaurant-vip.html">${restaurantPage.vipTitle}</a></h2>
         <p>${restaurantPage.vipDescription}</p>
         <ul class="feature-list">
           ${restaurantPage.features.map((feature) => `<li>${feature}</li>`).join("")}
         </ul>
         <div class="cta-row">
-          <a class="btn btn-primary" href="./restaurant-order.html">Restaurant Menu</a>
-          <a class="btn btn-whatsapp" href="${whatsappLinks.vipRoom}">WhatsApp VIP Room</a>
+          <a class="btn btn-primary" href="./restaurant-vip.html#vip-request" data-vip-request-link>Request a VIP Room</a>
+          <a class="btn btn-light" href="./restaurant-vip.html">View Room &amp; Gallery</a>
+          <p data-vip-summary role="status">Availability is checked before requesting.</p>
         </div>
       </div>
     </section>
@@ -50,7 +51,7 @@ app.innerHTML = `
       <div class="section-heading reveal">
         <p class="eyebrow">Menu Preview</p>
         <h2 id="restaurant-menu-title">Warm meals, coffee, and private dining</h2>
-        <p>Use this area for final menu categories, VIP room packages, and private dining prices.</p>
+        <p>Explore the restaurant menu and arrange a private gathering with our team.</p>
       </div>
       <div class="service-option-grid">
         ${menuPreview
@@ -66,36 +67,16 @@ app.innerHTML = `
       </div>
     </section>
 
-    <section class="section vip-room-gallery" aria-labelledby="restaurant-vip-gallery-title">
-      <div class="section-heading reveal">
-        <p class="eyebrow">VIP Room Gallery</p>
-        <h2 id="restaurant-vip-gallery-title">Private lunch and coffee ceremony rooms</h2>
-        <p>Use this gallery to show customers the VIP spaces they can reserve for meals, coffee ceremony, and private time.</p>
-      </div>
-      <div class="gallery-grid compact-gallery">
-        ${vipRoomGallery
-          .map(
-            (item) => `
-              <figure class="gallery-item reveal">
-                <img src="${item.image}" alt="${item.label}" loading="lazy" />
-                <figcaption>${item.label}</figcaption>
-              </figure>
-            `,
-          )
-          .join("")}
-      </div>
-    </section>
-
     <section class="section contact" id="restaurant-booking" aria-labelledby="restaurant-booking-title">
       <div class="contact-copy reveal">
         <p class="eyebrow">Restaurant Menu</p>
         <h2 id="restaurant-booking-title">Order food, drinks, and delivery pastries</h2>
         <p>
-          Start with dine in, take away, or delivery. Dine-in customers can request the VIP room from the order page.
+          Start with dine in, take away, or delivery. Explore our private VIP majlis and request a visit separately from your food order.
         </p>
         <div class="contact-list">
           <a href="./restaurant-order.html">Open Restaurant Menu</a>
-          <a href="${whatsappLinks.vipRoom}">WhatsApp VIP Room</a>
+          <a href="./restaurant-vip.html">Explore &amp; Request the VIP Room</a>
           <a href="mailto:${siteConfig.restaurantEmail}">${siteConfig.restaurantEmail}</a>
           <a href="tel:${siteConfig.restaurantPhone.replaceAll(" ", "")}">${siteConfig.restaurantPhone}</a>
         </div>
@@ -140,3 +121,16 @@ const revealObserver = new IntersectionObserver(
 
 document.querySelectorAll(".reveal").forEach((element) => revealObserver.observe(element));
 setHeaderState();
+
+async function updateVipSummary() {
+  const link = document.querySelector('[data-vip-request-link]'), status = document.querySelector('[data-vip-summary]');
+  try {
+    const { room } = await restaurantRequest('vip_availability');
+    const available = room.status === 'available';
+    link.href = available ? './restaurant-vip.html#vip-request' : 'tel:+251984977677';
+    link.textContent = available ? 'Request a VIP Room' : 'VIP Occupied — Call Restaurant';
+    status.textContent = available ? 'Available for requests · Our team confirms by phone.' : 'Online requests reopen when the room is released.';
+  } catch { link.href = 'tel:+251984977677'; link.textContent = 'Call About the VIP Room'; status.textContent = 'Please call to check availability.'; }
+}
+updateVipSummary();
+setInterval(() => { if (!document.hidden) updateVipSummary(); }, 10000);

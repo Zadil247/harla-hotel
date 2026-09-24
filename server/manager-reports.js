@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 
 export const reportSources = [
+  { key: 'vip', table: 'restaurant_vip_requests', label: 'VIP dining', columns: 'id,request_series,request_number,booking_reference,full_name,phone,guests,preferred_date,preferred_time,status,created_at,updated_at', ref: 'booking_reference', name: 'full_name' },
   { key: 'rooms', table: 'room_bookings', label: 'Rooms', columns: 'id,request_series,request_number,booking_number,full_name,phone,email,room_type,check_in,check_out,number_of_rooms,status,payment_status,total_price_etb,total_price,created_at,updated_at', ref: 'booking_number', name: 'full_name' },
   { key: 'restaurant', table: 'restaurant_orders', label: 'Restaurant', columns: 'id,request_series,request_number,order_number,customer_name,phone,order_type,items,status,payment_method,payment_status,odoo_status,created_at,updated_at', ref: 'order_number', name: 'customer_name' },
   { key: 'events', table: 'event_hall_bookings', label: 'Events', columns: 'id,request_series,request_number,booking_reference,client_full_name,phone,email,hall_name,event_date,start_time,end_time,attendees,status,payment_status,quoted_amount,quoted_currency,created_at,updated_at', ref: 'booking_reference', name: 'client_full_name' },
@@ -73,7 +74,7 @@ export async function buildWorkbook(data, summary = summarizeReport(data)) {
     { measure: 'Period starts (inclusive)', details: dateCell(data.start) },
     { measure: 'Period ends (exclusive)', details: dateCell(data.end) },
     { measure: 'Generated', details: dateCell(data.generatedAt) },
-    ...summary.lines.map((details, index) => ({ measure: index < 6 ? 'New records and comparison' : 'Activity / interpretation', details })),
+    ...summary.lines.map((details, index) => ({ measure: index < reportSources.length ? 'New records and comparison' : 'Activity / interpretation', details })),
     ...summary.services.flatMap(service => [
       ...Object.entries(service.statuses).map(([status, count]) => ({ measure: `${service.service}: ${status}`, details: count })),
       ...Object.entries(service.values).map(([currency, amount]) => ({ measure: `${service.service}: recorded value (${currency})`, details: amount })),
@@ -92,6 +93,7 @@ export async function buildWorkbook(data, summary = summarizeReport(data)) {
       details: source.key === 'restaurant' ? `${row.order_type}; kitchen: ${row.odoo_status === 'entered' ? 'sent' : 'not sent'}; ${(row.items || []).map(item => `${item.quantity} × ${item.name}`).join(', ')}`
         : source.key === 'rooms' ? `${row.room_type}; ${row.check_in} to ${row.check_out}; ${row.number_of_rooms || 1} room(s)`
         : source.key === 'events' ? `${row.hall_name}; ${row.event_date} ${row.start_time}–${row.end_time}; ${row.attendees} attendees`
+        : source.key === 'vip' ? `${row.guests ?? 'Unspecified'} people; ${row.preferred_date || 'date to discuss'}; ${row.preferred_time || 'time to discuss'} (Ethiopia)`
         : [row.package_name, row.event_type, row.reservation_date, row.reservation_time, row.check_in, row.check_out, row.message].filter(Boolean).join('; '),
     })));
   }

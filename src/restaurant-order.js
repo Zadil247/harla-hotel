@@ -44,7 +44,7 @@ function menu() {
    <div class="section-heading"><p class="eyebrow">${labels[orderType]}</p><h2>Food, drinks & pastries</h2><p>Choose your favourites from Harla Restaurant.</p></div>
    <div class="restaurant-menu-filters"><label>Search menu<input type="search" id="menu-search" value="${escape(state.search)}" placeholder="Find a dish or drink"></label>
    <label>Category<select id="menu-category"><option>All</option>${categories.map(c=>`<option ${state.category===c?'selected':''}>${escape(c)}</option>`).join('')}</select></label></div>
-   ${orderType==='dine_in'?`<a class="text-link" href="${whatsappLinks.vipRoom}" target="_blank" rel="noopener">Request the VIP restaurant room</a>`:''}
+   ${orderType==='dine_in'?`<a class="text-link" href="./restaurant-vip.html">Explore &amp; request the VIP restaurant room</a>`:''}
    <p id="menu-results" role="status"></p>
    ${categories.map((c,index)=>`<section class="menu-category" data-category="${escape(c)}" aria-labelledby="menu-category-${index}"><h3 id="menu-category-${index}">${escape(c)}</h3><div class="menu-grid">${restaurantMenuItems.filter(i=>i.category===c).map(card).join('')}</div></section>`).join('')}
    <a class="btn btn-light" href="./index.html#restaurant-order-options">Change Order Type</a>
