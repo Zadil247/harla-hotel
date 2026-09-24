@@ -363,6 +363,10 @@ export function RestaurantOrderOptionsSection() {
           )
           .join("")}
       </div>
+      <article class="vip-home-feature split-feature" aria-labelledby="vip-home-title">
+        <a class="vip-explore-link" href="./restaurant-vip.html"><img src="${images.vipMajlis}" alt="Harla's private red and gold VIP majlis" loading="lazy" width="1280" height="567" /><span>Step inside the VIP Majlis ↗</span></a>
+        <div><p class="eyebrow">Private dining</p><h3 id="vip-home-title">A room for your favourite people.</h3><p>Discover our traditional majlis, browse the room gallery and request a private visit. Our restaurant team will call to arrange the details.</p><div class="cta-row"><a class="btn btn-primary" href="./restaurant-vip.html">View VIP Room</a><a class="btn btn-light" href="tel:+251984977677">Call Restaurant</a></div></div>
+      </article>
     </section>
   `;
 }
@@ -389,7 +393,6 @@ export function BookingForm() {
             <option value="">Select a service</option>
             <option>Hotel booking only</option>
             <option>Restaurant reservation</option>
-            <option>VIP Private Room reservation</option>
             <option>Event hall booking</option>
             <option>Cultural Photo & Lunch Room booking</option>
             <option>Hotel + tour package</option>
