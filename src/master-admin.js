@@ -107,6 +107,11 @@ async function refresh(manual = false) {
     statusText(`Live updates paused: ${error.message} The last received data remains visible.`);
   } finally { state.refreshing = false; }
 }
+function startupError(error) {
+  if (error.status === 403) { location.replace('./master-admin-login.html'); return; }
+  shell(`<section class="admin-card" role="alert"><h2>Dashboard could not load</h2><p>${esc(error.message || 'Please try again.')}</p><div class="admin-actions"><button class="btn btn-primary" type="button" data-retry-startup>Try Again</button><a class="btn btn-light" href="./master-admin-login.html">Back to Sign In</a></div></section>`);
+  document.querySelector('[data-retry-startup]').onclick = () => init();
+}
 async function init() {
   if (loginPage) {
     login(); let editing = false; document.querySelector('#master-login').addEventListener('input', () => { editing = true; }, { once: true });
@@ -115,7 +120,7 @@ async function init() {
   }
   shell('<section class="admin-card"><p>Checking management access…</p></section>');
   try { state.profile = (await request('profile')).profile; state.data = await request('dashboard'); render(); }
-  catch (error) { if (error.status === 403) location.replace('./master-admin-login.html'); else statusText(error.message); return; }
+  catch (error) { startupError(error); return; }
   setInterval(() => { if (!document.hidden) refresh(); }, 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 }

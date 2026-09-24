@@ -1,5 +1,14 @@
 # Harla V1 readiness checkpoint — 17 September 2026
 
+## Master dashboard loading fix — 24 September 2026
+
+- Confirmed the reported loading failure in preview logs: dashboard requests returned PostgreSQL 42501 for restaurant_requests and package_bookings. The server role lacked SELECT on those two legacy enquiry tables.
+- Applied manager_enquiry_read_access: SELECT only for service_role. Existing guest/staff privileges and RLS remain unchanged. No credentials, bookings or report settings were changed.
+- Added and ran supabase/tests/manager_dashboard_access.sql against the live database as service_role. All six service projections, activity, master profile, report settings and report history queries passed. This covers the permission gap missed by the earlier local tests.
+- Initial dashboard errors now replace the loading screen with an explicit error and Try Again button; API errors distinguish loading/access failures from report delivery failures.
+- Manager reporting regression suite, production build and diff checks passed. Signed-in browser verification is still for the owner's review; no claim of a browser pass is made.
+- Owner explicitly paused production to review the preview. Do not merge or deploy to harlahotel.com until that review and approval.
+
 ## Management release — current work (17 September 2026)
 
 This section supersedes earlier UI/access notes below; the older entries are history.

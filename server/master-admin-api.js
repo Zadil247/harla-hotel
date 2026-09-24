@@ -138,6 +138,11 @@ export async function masterAdminRequest(request, body) {
     return reply({ error: 'Choose a valid Master Admin action.' }, 400);
   } catch (error) {
     console.error('Master Admin action failed', { action: body.action, code: error.code, message: error.message });
-    return reply({ error: 'The management request could not finish. Refresh and try again. Report delivery errors are recorded in delivery history.' }, 503);
+    const message = body.action === 'dashboard'
+      ? 'Bookings and orders could not be loaded. Please try again.'
+      : body.action === 'profile'
+        ? 'Management access could not be checked. Please try again.'
+        : 'The management request could not finish. Please try again. Email delivery errors appear in delivery history.';
+    return reply({ error: message }, 503);
   }
 }
