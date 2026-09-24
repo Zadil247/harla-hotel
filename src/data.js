@@ -59,7 +59,7 @@ export const images = {
     "./assets/rooms/harla-room-bed.jpeg",
     "./assets/rooms/harla-room-desk.jpeg",
   ],
-  restaurant: "./assets/restaurant/restaurant-menu-interior.jpeg",
+  restaurant: "/assets/restaurant/restaurant-menu-interior.jpeg",
   event: "./assets/events/harla-event-hall.jpeg",
   packages: "./assets/packages/harla-packages-brand-wall.jpeg",
   gallery: [
