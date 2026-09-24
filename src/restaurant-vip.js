@@ -49,7 +49,7 @@ function renderAvailability(error = false) {
 async function checkAvailability() {
   if (state.checking) return; state.checking = true;
   try { state.room = (await restaurantRequest('vip_availability')).room; renderAvailability(); }
-  catch { state.room = null; renderAvailability(true); }
+  catch (error) { console.warn('VIP availability check failed:', error.message); state.room = null; renderAvailability(true); }
   finally { state.checking = false; }
 }
 document.querySelector('#vip-retry').onclick = checkAvailability;
