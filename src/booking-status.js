@@ -104,7 +104,7 @@ function contactBlock() {
     <p class="booking-status-contact">
       For more information, contact our Reservations Team:<br />
       <a href="mailto:booking@harlahotel.com">booking@harlahotel.com</a><br />
-      <a href="tel:+251915321188">+251 915 321 188</a>
+      <a href="tel:+251984517677">+251 984 517 677</a>
     </p>
   `;
 }
@@ -178,7 +178,7 @@ app.innerHTML = `
       </form>
       <div id="booking-status-result" aria-live="polite"></div>
     </section>
-    <p class="booking-status-help">Need help? Contact <a href="mailto:booking@harlahotel.com">booking@harlahotel.com</a> or <a href="tel:+251915321188">+251 915 321 188</a>.</p>
+    <p class="booking-status-help">Need help? Contact <a href="mailto:booking@harlahotel.com">booking@harlahotel.com</a> or <a href="tel:+251984517677">+251 984 517 677</a>.</p>
   </main>
   ${Footer()}
 `;

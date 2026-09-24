@@ -30,11 +30,11 @@ function orderStatusMessage(order) {
   }
 
   if (order.status === "approved" && order.odoo_status === "entered") {
-    return "Your order has been entered into our kitchen system.";
+    return "Your order has been sent to the kitchen.";
   }
 
   if (order.status === "approved") {
-    return "Approved. Entered into Odoo / kitchen system soon.";
+    return "Approved. The restaurant is preparing your order.";
   }
 
   return "Pending approval";
@@ -51,14 +51,15 @@ function orderResult(order) {
       <h2>${escapeHtml(orderStatusMessage(order))}</h2>
       <dl class="status-details">
         <div><dt>Order type</dt><dd>${escapeHtml(order.order_type)}</dd></div>
-        <div><dt>Payment status</dt><dd>${escapeHtml(order.payment_status || "-")}</dd></div>
+        <div><dt>Payment status</dt><dd>${escapeHtml(order.status === "declined" ? "Order declined. Contact the hotel about any payment." : order.payment_status === "pay_at_hotel" ? "Pay at the hotel" : order.status === "approved" ? "Payment verified" : "Awaiting payment verification")}</dd></div>
         <div><dt>Order status</dt><dd>${escapeHtml(order.status)}</dd></div>
-        <div><dt>Kitchen system</dt><dd>${escapeHtml(order.odoo_status || "not_entered")}</dd></div>
+        <div><dt>Kitchen status</dt><dd>${order.odoo_status === "entered" ? "Sent to kitchen" : order.status === "declined" ? "Not sent to kitchen" : "Awaiting kitchen handoff"}</dd></div>
       </dl>
       <p>
         If you need help with this order, contact Harla Hotel and share your order number.
       </p>
       <a class="btn btn-whatsapp" href="${whatsappLinks.table}" target="_blank" rel="noopener">Contact on WhatsApp</a>
+      <p><a href="mailto:${siteConfig.restaurantEmail}">${siteConfig.restaurantEmail}</a></p>
     </section>
   `;
 }
@@ -99,7 +100,7 @@ function render(message = "", order = null) {
         </section>
       </div>
     </main>
-    ${Footer()}
+    ${Footer({ email: siteConfig.restaurantEmail, phone: siteConfig.restaurantPhone, whatsapp: siteConfig.restaurantWhatsapp })}
   `;
 
   document.querySelector("[data-header]")?.classList.add("is-scrolled");

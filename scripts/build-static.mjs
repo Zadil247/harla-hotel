@@ -6,6 +6,9 @@ const root = process.cwd();
 const dist = join(root, "dist");
 
 const rootFiles = [
+  "admin-account.html",
+  "master-admin.html",
+  "master-admin-login.html",
   "admin-login.html",
   "admin.html",
   "approved-orders.html",
@@ -20,6 +23,8 @@ const rootFiles = [
   "index.html",
   "order-status.html",
   "restaurant-menu.html",
+  "restaurant-admin.html",
+  "restaurant-admin-login.html",
   "restaurant-order.html",
   "restaurant.html",
   "room-booking.html",

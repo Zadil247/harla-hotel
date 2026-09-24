@@ -1,3 +1,5 @@
+import { masterAdminRequest } from "../server/master-admin-api.js";
+import { adminAccountRequest } from "../server/admin-accounts.js";
 import { requestingRoomAdmin } from "../server/admin-auth.js";
 import {
   adminRoomRows,
@@ -45,6 +47,7 @@ async function bookingById(supabase, id) {
 }
 
 async function roomAdminProfile(supabase, admin) {
+  if (admin.masterAdmin) return { ...admin.masterProfile, role: "master_admin" };
   const { data, error } = await supabase
     .from("room_admin_users")
     .select("user_id, email, full_name, role, active")
@@ -60,9 +63,13 @@ export default {
     if (request.method !== "POST") return response({ error: "Method not allowed." }, 405);
     try {
       const body = await requestJson(request);
-      const supabase = getSupabaseAdmin();
+      if (body.scope === "account") return await adminAccountRequest(request, body);
+      if (body.scope === "manager") return await masterAdminRequest(request, body);
+      let supabase = getSupabaseAdmin();
       const admin = await requestingRoomAdmin(supabase, request);
       if (!admin) return response({ error: "Active Harla Hotel Room Admin access is required." }, 403);
+
+      supabase = getSupabaseAdmin(admin.id);
 
       if (body.action === "profile") {
         return response({ profile: await roomAdminProfile(supabase, admin) });

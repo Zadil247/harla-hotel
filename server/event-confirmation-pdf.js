@@ -184,7 +184,7 @@ export async function generateEventHallConfirmationPdf(booking, assets = {}) {
     page.drawText("HARLA HOTEL", { x: margin, y: A4[1] - 40, size: 23, font: bold, color: palette.white });
     page.drawText(title, { x: margin, y: A4[1] - 61, size: 10, font: regular, color: palette.white });
     page.drawText("Harar, Ethiopia", { x: margin, y: A4[1] - 80, size: 8.5, font: regular, color: palette.white });
-    page.drawText("+251 915 321 188  |  events@harlahotel.com", {
+    page.drawText("+251 984 517 677  |  events@harlahotel.com", {
       x: margin,
       y: A4[1] - 96,
       size: 8.5,
@@ -529,7 +529,7 @@ export async function generateEventHallConfirmationPdf(booking, assets = {}) {
       thickness: 0.5,
       color: palette.line,
     });
-    currentPage.drawText("Harla Hotel  |  Harar, Ethiopia  |  +251 915 321 188", {
+    currentPage.drawText("Harla Hotel  |  Harar, Ethiopia  |  +251 984 517 677", {
       x: margin,
       y: 22,
       size: 7.5,

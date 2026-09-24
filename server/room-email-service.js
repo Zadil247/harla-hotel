@@ -61,7 +61,7 @@ export function renderRoomConfirmationEmail(booking) {
             <p style="font-size:13px;color:#5d5a52;">Use your full name and booking reference to open the secure status page.</p>
           </div>
           <div style="padding:19px 28px;background:#171716;color:#eee;font-size:13px;line-height:1.55;">
-            Harla Hotel Reservations, Harar, Ethiopia<br />+251 915 321 188 | booking@harlahotel.com
+            Harla Hotel Reservations, Harar, Ethiopia<br />+251 984 517 677 | booking@harlahotel.com
           </div>
         </div>
       </body></html>`,
