@@ -10,6 +10,7 @@ import {
   whatsappLinks,
 } from "./data.js?v=20260702-booking-availability";
 import { LightboxImage, LightboxMarkup } from "./lightbox.js?v=20260702-booking-availability";
+import { RestaurantShowcase } from "./restaurant-showcase.js";
 
 function escapeHtml(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;")
@@ -522,6 +523,7 @@ export function App() {
 
       ${RoomAvailabilitySection()}
       ${HarariCulturalHouseSection()}
+      ${RestaurantShowcase()}
       ${RestaurantOrderOptionsSection()}
       ${EventPreview()}
 

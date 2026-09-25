@@ -1,6 +1,7 @@
 import { App } from "./components.js?v=20260702-booking-availability";
 import { siteConfig } from "./data.js?v=20260702-booking-availability";
 import { initImageLightbox } from "./lightbox.js?v=20260702-booking-availability";
+import { initRestaurantShowcase } from "./restaurant-showcase.js";
 import {
   backendSetupMessage,
   createEventRequest,
@@ -13,6 +14,7 @@ import {
 
 const app = document.querySelector("#app");
 app.innerHTML = App();
+initRestaurantShowcase();
 
 const header = document.querySelector("[data-header]");
 const navToggle = document.querySelector("[data-nav-toggle]");
