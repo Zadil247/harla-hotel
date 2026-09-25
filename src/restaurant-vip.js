@@ -5,9 +5,9 @@ import { escapeHtml as esc, wireRestaurantNav } from './restaurant-admin-ui.js';
 import { requestNumberLabel } from './request-number.js';
 
 const images = [
-  { src: './assets/restaurant/vip/majlis-03.jpeg', title: 'A space to make your own.', alt: 'Wide view of the private majlis with red seating, patterned carpets and dining area' },
-  { src: './assets/restaurant/vip/majlis-01.jpeg', title: 'Gather a little closer.', alt: 'Traditional red and gold majlis seating around a carpeted gathering area' },
-  { src: './assets/restaurant/vip/majlis-02.jpeg', title: 'Make time for good company.', alt: 'Sunlit VIP room with red velvet seating and gold cushions' },
+  { src: './assets/restaurant/vip/majlis-03-enhanced.webp', title: 'A space to make your own.', alt: 'Wide view of the private majlis with red seating, patterned carpets and dining area' },
+  { src: './assets/restaurant/vip/majlis-01-enhanced.webp', title: 'Gather a little closer.', alt: 'Traditional red and gold majlis seating around a carpeted gathering area' },
+  { src: './assets/restaurant/vip/majlis-02-enhanced.webp', title: 'Make time for good company.', alt: 'Sunlit VIP room with red velvet seating and gold cushions' },
 ];
 const phone = '+251984977677';
 const state = { room: null, checking: false, submitted: false, busy: false, id: crypto.randomUUID(), slide: 0, paused: matchMedia('(prefers-reduced-motion: reduce)').matches };
