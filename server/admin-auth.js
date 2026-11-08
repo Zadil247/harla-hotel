@@ -1,0 +1,142 @@
+export async function requestingAdmin(supabase, request) {
+  const authorization = request.headers.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+
+  if (!token) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return null;
+  }
+
+  const master = await masterMembership(supabase, data.user.id);
+  if (master) return { ...data.user, masterAdmin: true, masterProfile: master, roomAdminRole: "master_admin", eventAdminRole: "event_manager" };
+
+  const { data: admin, error: adminError } = await supabase
+    .from("admin_users")
+    .select("user_id, active")
+    .eq("user_id", data.user.id)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (adminError) {
+    console.error("Harla admin authorization lookup failed", {
+      code: adminError.code || "unknown_database_error",
+      message: adminError.message || "The admin_users query failed.",
+    });
+    const diagnostic = new Error("Harla admin authorization lookup failed.", {
+      cause: adminError,
+    });
+    diagnostic.code = "admin_authorization_lookup_failed";
+    throw diagnostic;
+  }
+
+  return admin ? data.user : null;
+}
+
+export async function requestingEventAdmin(supabase, request) {
+  const authorization = request.headers.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+
+  if (!token) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return null;
+  }
+
+  const master = await masterMembership(supabase, data.user.id);
+  if (master) return { ...data.user, masterAdmin: true, masterProfile: master, roomAdminRole: "master_admin", eventAdminRole: "event_manager" };
+
+  const { data: admin, error: adminError } = await supabase
+    .from("event_admin_users")
+    .select("user_id, active, role")
+    .eq("user_id", data.user.id)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (adminError) {
+    console.error("Harla Event Admin authorization lookup failed", {
+      code: adminError.code || "unknown_database_error",
+      message: adminError.message || "The event_admin_users query failed.",
+    });
+    const diagnostic = new Error("Harla Event Admin authorization lookup failed.", {
+      cause: adminError,
+    });
+    diagnostic.code = "event_admin_authorization_lookup_failed";
+    throw diagnostic;
+  }
+
+  return admin ? { ...data.user, eventAdminRole: admin.role } : null;
+}
+
+export async function requestingRoomAdmin(supabase, request) {
+  const authorization = request.headers.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+
+  if (!token) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return null;
+  }
+
+  const master = await masterMembership(supabase, data.user.id);
+  if (master) return { ...data.user, masterAdmin: true, masterProfile: master, roomAdminRole: "master_admin", eventAdminRole: "event_manager" };
+
+  const { data: admin, error: adminError } = await supabase
+    .from("room_admin_users")
+    .select("user_id, active, role")
+    .eq("user_id", data.user.id)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (adminError) {
+    console.error("Harla Room Admin authorization lookup failed", {
+      code: adminError.code || "unknown_database_error",
+      message: adminError.message || "The room_admin_users query failed.",
+    });
+    const diagnostic = new Error("Harla Room Admin authorization lookup failed.", {
+      cause: adminError,
+    });
+    diagnostic.code = "room_admin_authorization_lookup_failed";
+    throw diagnostic;
+  }
+
+  const allowedRoles = new Set([
+    "room_admin",
+    "room_manager",
+    "hotel_manager",
+    "master_admin",
+  ]);
+  return admin && allowedRoles.has(admin.role)
+    ? { ...data.user, roomAdminRole: admin.role }
+    : null;
+}
+
+async function masterMembership(supabase, userId) {
+  const { data, error } = await supabase.from("master_admin_users").select("user_id,email,full_name,active").eq("user_id", userId).eq("active", true).maybeSingle();
+  if (error) throw new Error("Master Admin authorization could not be checked.", { cause: error });
+  return data;
+}
+
+export async function requestingMasterAdmin(supabase, request) {
+  const authorization = request.headers.get("authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return null;
+  const { data, error } = await supabase.auth.getUser(authorization.slice(7).trim());
+  if (error || !data.user) return null;
+  const master = await masterMembership(supabase, data.user.id);
+  return master ? { ...data.user, masterAdmin: true, masterProfile: master } : null;
+}
