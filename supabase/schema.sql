@@ -316,6 +316,7 @@ insert into public.room_inventory (room_type, total_rooms, available_rooms)
 values
   ('Queen Size Bed Room', 8, 8),
   ('Twin Bed Room', 2, 2),
+  ('Sweet Room', 6, 6),
   ('VIP Room', 1, 1)
 on conflict (room_type) do update set
   total_rooms = excluded.total_rooms,

@@ -7,7 +7,7 @@ export const roomPricing = Object.freeze([
   Object.freeze({
     slug: "twin-bed-room",
     name: "Twin Bed Room",
-    pricePerNightEtb: 5000,
+    pricePerNightEtb: 4500,
   }),
   Object.freeze({
     slug: "vip-room",

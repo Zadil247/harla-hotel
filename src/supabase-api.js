@@ -16,6 +16,7 @@ const defaultRestaurantSettings = {
 const fallbackRoomInventory = [
   { room_type: "Queen Size Bed Room", total_rooms: 8, available_rooms: 8 },
   { room_type: "Twin Bed Room", total_rooms: 2, available_rooms: 2 },
+  { room_type: "Sweet Room", total_rooms: 6, available_rooms: 6 },
   { room_type: "VIP Room", total_rooms: 1, available_rooms: 1 },
 ];
 
