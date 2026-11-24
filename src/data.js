@@ -95,7 +95,7 @@ export const roomBookingTypes = [
     slug: "twin-bed-room",
     name: "Twin Bed Room",
     pricePerNight: findRoomPricing("twin-bed-room").pricePerNightEtb,
-    priceLabel: "4,500 ETB per night",
+    priceLabel: "5,000 ETB per night",
     totalRooms: 1,
     availableRooms: 1,
     image: "/public/images/twin-room.jpg",

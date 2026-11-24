@@ -302,7 +302,8 @@ for each row execute function public.set_updated_at();
 insert into public.rooms (slug, name, description, price_per_night, total_rooms, available_rooms)
 values
   ('queen-size-bed-room', 'Queen Size Bed Room', 'Queen-size room with private bathroom, Wi-Fi, and workspace.', 4000, 8, 8),
-  ('twin-bed-room', 'Twin Bed Room', 'Twin-bed room for friends, families, and business guests traveling together.', 4000, 2, 2),
+  ('twin-bed-room', 'Twin Bed Room', 'Twin-bed room for friends, families, and business guests traveling together.', 5000, 2, 2),
+  ('sweet-room', 'Sweet Room', 'Comfortable Sweet Room with privacy and warm Harla Hotel service.', 4000, 6, 6),
   ('vip-room', 'VIP Room', 'Special Harari-style VIP room with cultural living room and private bathroom.', 7000, 1, 1)
 on conflict (slug) do update set
   name = excluded.name,
